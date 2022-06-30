@@ -6,15 +6,15 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// BaseEntity : attach this as a base model using uuid
-type BaseEntity struct {
+// Base : attach this as a base model using uuid
+type Base struct {
 	ID        string    `json:"id" db:"id" gorm:"type:VARCHAR(100);primary"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 	IsDeleted bool      `json:"is_deleted" db:"is_deleted" gorm:"type:TINYINT(1);index"`
 }
 
-func (b *BaseEntity) New() {
+func (b *Base) New() {
 	id, err := uuid.NewV4()
 	if err != nil {
 		panic(err)
