@@ -38,6 +38,12 @@ func (c *CrudGorm[t]) GetAll() ([]*t, error) {
 	return res, err
 }
 
+func (c *CrudGorm[t]) IsForAccountID(id string, accountID string) bool {
+	var count int64
+	c.DB.Where(c.PrimaryKey+"=?", id).Where("account_id=?", accountID).Count(&count)
+	return count > 0
+}
+
 // GetWithFilterExpression : filter + sort a result using the rql package
 func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.SortExpression) (data []*t, err error) {
 	var (
