@@ -31,6 +31,8 @@ var (
 	errorAccountUserNameAlreadyExists = errors.New("this account user name / email already exists")
 	errorAccountMustBeValid           = errors.New("account must be alphanumeric with no spaces or special characters (you can use underscore or dashes)")
 	errUnauthorized                   = errors.New("Unauthorized")
+	errorNotFoundAccount              = errors.New("account not found")
+	errRepo                           = errors.New("could not transact with repository")
 )
 
 type loginObj struct {
@@ -90,6 +92,18 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 
 }
 
+func (c *SessionAuthGinController) DeleteCookie(ctx *gin.Context) {
+	ctx.SetCookie(
+		c.CookieName,
+		"",
+		0,
+		"/",
+		c.Domain,
+		true,
+		true,
+	)
+}
+
 func (c *SessionAuthGinController) login(ctx *gin.Context) {
 	var info loginObj
 	err := ctx.BindJSON(&info)
@@ -113,12 +127,18 @@ func (c *SessionAuthGinController) IsPasswordSafe(p string) error {
 	return passwordvalidator.Validate(p, MinEntropy)
 }
 
-func (s *SessionAuthGinController) sendAccountInfo(ctx *gin.Context, accID string) {
+func (s *SessionAuthGinController) sendAccountInfo(ctx *gin.Context, accID, sesId string) {
 	ctx.Set("account_id", accID)
+	ctx.Set("session_id", sesId)
 }
 
-func (C *SessionAuthGinController) logout(ctx *gin.Context) {
-
+func (c *SessionAuthGinController) logout(ctx *gin.Context) {
+	sesId, isFoundSes := ctx.Get("session_id")
+	if isFoundSes {
+		c.SRepo.DeleteById(sesId.(string))
+	}
+	c.DeleteCookie(ctx)
+	ctx.JSON(200, "logged out")
 }
 
 func (c *SessionAuthGinController) validateAccount(acc *entity.Account) error {
@@ -180,15 +200,66 @@ func (c *SessionAuthGinController) newAccount(ctx *gin.Context) {
 }
 
 func (c *SessionAuthGinController) getAccountInfo(ctx *gin.Context) {
-
+	id := ctx.Param("id")
+	ac, err := c.Arepo.GetById(id)
+	if err != nil {
+		ctx.AbortWithError(http.StatusNotFound, errorNotFoundAccount)
+		return
+	}
+	ctx.JSON(200, c.toAccount(ac, true))
 }
 
-func (c *SessionAuthGinController) updateAccount(ctx *gin.Context) {
+func (c *SessionAuthGinController) changePassword(ctx *gin.Context) {
+	type pwd struct {
+		OldPassword string `json:"old_pwd" binding:"required"`
+		NewPassword string `json:"new_pwd" binding:"required"`
+	}
+
+	accId, _ := ctx.Get("account_id")
+	var p pwd
+
+	err := ctx.ShouldBindJSON(&p)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	acc, err := c.Arepo.GetById(accId.(string))
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, errRepo)
+		return
+	}
+
+	err = c.validatePassword(acc.Password, p.OldPassword)
+	if err != nil {
+		ctx.AbortWithError(http.StatusUnauthorized, errUnauthorized)
+		return
+	}
+
+	err = c.IsPasswordSafe(p.NewPassword)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	acc.Password = p.NewPassword
+	acc = c.genHashAuth(acc)
+	err = c.Arepo.Update(acc)
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, errRepo)
+		return
+	}
+	ctx.JSON(http.StatusOK, c.toAccount(acc, false))
 
 }
 
 func (c *SessionAuthGinController) deleteAccount(ctx *gin.Context) {
-
+	id, _ := ctx.Get("account_id")
+	err := c.Arepo.DeleteById(id.(string))
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, errRepo)
+		return
+	}
+	ctx.JSON(200, map[string]interface{}{"message": fmt.Sprintf("Deleted Account %s", id)})
 }
 
 func (c *SessionAuthGinController) validate(ctx *gin.Context) {
@@ -200,18 +271,35 @@ func (c *SessionAuthGinController) validate(ctx *gin.Context) {
 			return
 		}
 		// send the account id
-		c.sendAccountInfo(ctx, session.AccountID)
+		c.sendAccountInfo(ctx, session.AccountID, sessionId)
 		// refresh cookie
 		c.SerializeSession(session.AccountID, ctx, session)
 		ctx.Next()
 		return
 	}
 	ctx.AbortWithError(http.StatusUnauthorized, errUnauthorized)
-	return
 }
 
 func (c *SessionAuthGinController) GetAuthMiddleWare() gin.HandlerFunc {
 	return c.validate
+}
+
+func (c *SessionAuthGinController) pwdStrength(ctx *gin.Context) {
+	type pwd struct {
+		Password string `json:"password" binding:"required"`
+	}
+	var p pwd
+	err := ctx.ShouldBindJSON(&p)
+	if err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	err = c.IsPasswordSafe(p.Password)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, map[string]interface{}{"message": err.Error()})
+		return
+	}
+	ctx.JSON(200, "ok")
 }
 
 func (c *SessionAuthGinController) ApplyRoutes(e *gin.Engine) *gin.Engine {
@@ -219,12 +307,12 @@ func (c *SessionAuthGinController) ApplyRoutes(e *gin.Engine) *gin.Engine {
 	{
 		grp.POST("login", c.login)
 		grp.POST("logout", c.validate, c.logout)
-		grp.POST("password-strength/check")
+		grp.POST("password-strength/check", c.pwdStrength)
 
 		grp.POST("accounts", c.newAccount)
-		grp.PATCH("accounts", c.validate, c.updateAccount)
+		grp.PATCH("accounts/_password", c.validate, c.changePassword)
 		grp.DELETE("accounts", c.validate, c.deleteAccount)
-		grp.GET("accounts/:id", c.validate, c.getAccountInfo)
+		grp.GET("accounts/:id", c.getAccountInfo)
 	}
 	return e
 }
@@ -234,11 +322,13 @@ func NewGinSessionAuthGorm(db *gorm.DB, basePathRoute string, cookieName string,
 		URLPathPrefix:          basePathRoute,
 		AccountSessionDuration: loginExpiryTime,
 		Arepo: &repository.AccountGorm{
-			DB:         db,
-			PrimaryKey: "id",
-			Table:      (&entity.Account{}).TableName(),
-			Parser:     nil,
-			Sorter:     nil,
+			CrudGorm: repository.CrudGorm[entity.Account]{
+				DB:         db,
+				PrimaryKey: "id",
+				Table:      (&entity.Session{}).TableName(),
+				Parser:     nil,
+				Sorter:     nil,
+			},
 		},
 		SRepo: &repository.SessionGorm{
 			DB:         db,
