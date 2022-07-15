@@ -310,7 +310,7 @@ func (c *SessionAuthGinController) ApplyRoutes(e *gin.Engine) *gin.Engine {
 		grp.POST("password-strength/check", c.pwdStrength)
 
 		grp.POST("accounts", c.newAccount)
-		grp.PATCH("accounts/_password", c.validate, c.changePassword)
+		grp.PUT("accounts/_password", c.validate, c.changePassword)
 		grp.DELETE("accounts", c.validate, c.deleteAccount)
 		grp.GET("accounts/:id", c.getAccountInfo)
 	}
