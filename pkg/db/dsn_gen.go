@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	// DialectMYSQL : use this for mysql dsn generation
 	DialectMYSQL = "MYSQL"
 )
 
