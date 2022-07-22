@@ -112,7 +112,7 @@ func (c *SessionAuthGinController) IsLoggedIn(ctx *gin.Context) bool {
 		if err != nil {
 			return false
 		}
-		return session.ID == sessionId
+		return session.ID == sessionId && session.ExpiresAt.Unix() > time.Now().Unix()
 	}
 	return false
 }
