@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
 
@@ -89,7 +90,7 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 		"/",
 		c.Domain,
 		true,
-		true,
+		conditional.Ternary(os.Getenv("IS_LOCAL") == "TRUE", false, true),
 	)
 
 }
