@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/baderkha/library/pkg/store/entity"
 	"github.com/baderkha/library/pkg/store/repository"
 	"github.com/badoux/checkmail"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	passwordvalidator "github.com/wagslane/go-password-validator"
 	"golang.org/x/crypto/bcrypt"
@@ -82,18 +80,15 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 			return
 		}
 	}
-	spew.Dump("writing cookie")
-	spew.Dump(c.CookieName)
-	spew.Dump(session.ID)
-	spew.Dump(os.Getenv("IS_LOCAL"))
+
 	ctx.SetCookie(
 		c.CookieName,
 		session.ID,
-		60*60*24,
+		int(c.AccountSessionDuration/time.Minute),
 		"/",
 		c.Domain,
-		conditional.Ternary(os.Getenv("IS_LOCAL") == "TRUE", false, true),
-		conditional.Ternary(os.Getenv("IS_LOCAL") == "TRUE", false, true),
+		true,
+		true,
 	)
 
 }
@@ -127,7 +122,6 @@ func (c *SessionAuthGinController) login(ctx *gin.Context) {
 		return
 	}
 	c.SerializeSession(acc.ID, ctx, nil)
-	ctx.String(http.StatusOK, "logged in")
 }
 
 func (c *SessionAuthGinController) IsPasswordSafe(p string) error {
