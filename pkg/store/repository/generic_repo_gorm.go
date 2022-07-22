@@ -27,20 +27,20 @@ type CrudGorm[t any] struct {
 // GetById : get 1 record by id if not found should return err
 func (c *CrudGorm[t]) GetById(id string) (*t, error) {
 	var res t
-	err := c.DB.Where(c.PrimaryKey+"=?", id).First(&res).Error
+	err := c.DB.Table(c.Table).Where(c.PrimaryKey+"=?", id).First(&res).Error
 	return &res, err
 }
 
 // GetAll : get all the records (db dump)
 func (c *CrudGorm[t]) GetAll() ([]*t, error) {
 	var res []*t
-	err := c.DB.Find(&res).Error
+	err := c.DB.Table(c.Table).Find(&res).Error
 	return res, err
 }
 
 func (c *CrudGorm[t]) IsForAccountID(id string, accountID string) bool {
 	var count int64
-	c.DB.Where(c.PrimaryKey+"=?", id).Where("account_id=?", accountID).Count(&count)
+	c.DB.Table(c.Table).Where(c.PrimaryKey+"=?", id).Where("account_id=?", accountID).Count(&count)
 	return count > 0
 }
 
@@ -149,23 +149,23 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 
 // Create : create one
 func (c *CrudGorm[t]) Create(mdl *t) error {
-	return c.DB.Create(mdl).Error
+	return c.DB.Table(c.Table).Create(mdl).Error
 }
 
 // BulkCreate : create many
 func (c *CrudGorm[t]) BulkCreate(mdl []*t) error {
-	return c.DB.CreateInBatches(mdl, GormBatchSize).Error
+	return c.DB.Table(c.Table).CreateInBatches(mdl, GormBatchSize).Error
 }
 
 // Update : update model
 func (c *CrudGorm[t]) Update(mdl *t) error {
-	return c.DB.Updates(mdl).Error
+	return c.DB.Table(c.Table).Updates(mdl).Error
 }
 
 // DeleteById : perma delete model by id
 func (c *CrudGorm[t]) DeleteById(id string) error {
 	var res t
-	err := c.DB.Where(c.PrimaryKey+"=?", id).Delete(&res).Error
+	err := c.DB.Table(c.Table).Where(c.PrimaryKey+"=?", id).Delete(&res).Error
 	return err
 }
 
