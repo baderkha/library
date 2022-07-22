@@ -105,23 +105,38 @@ func (c *SessionAuthGinController) DeleteCookie(ctx *gin.Context) {
 	)
 }
 
+func (c *SessionAuthGinController) IsLoggedIn(ctx *gin.Context) bool {
+	sessionId, _ := ctx.Cookie(c.CookieName)
+	if sessionId != "" {
+		session, err := c.SRepo.GetById(sessionId)
+		if err != nil {
+			return false
+		}
+		return session.ID == sessionId
+	}
+	return false
+}
+
 func (c *SessionAuthGinController) login(ctx *gin.Context) {
-	var info loginObj
-	err := ctx.BindJSON(&info)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
-		return
+	if !c.IsLoggedIn(ctx) {
+		var info loginObj
+		err := ctx.BindJSON(&info)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
+			return
+		}
+		acc, err := c.Arepo.GetById(info.UserName)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
+			return
+		}
+		if c.validatePassword(acc.Password, info.Password) != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
+			return
+		}
+		c.SerializeSession(acc.ID, ctx, nil)
 	}
-	acc, err := c.Arepo.GetById(info.UserName)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
-		return
-	}
-	if c.validatePassword(acc.Password, info.Password) != nil {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
-		return
-	}
-	c.SerializeSession(acc.ID, ctx, nil)
+	ctx.String(http.StatusOK, "LOGGED IN")
 }
 
 func (c *SessionAuthGinController) IsPasswordSafe(p string) error {
