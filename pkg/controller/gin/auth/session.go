@@ -326,7 +326,7 @@ func NewGinSessionAuthGorm(db *gorm.DB, basePathRoute string, cookieName string,
 			CrudGorm: repository.CrudGorm[entity.Account]{
 				DB:         db,
 				PrimaryKey: "id",
-				Table:      (&entity.Session{}).TableName(),
+				Table:      (&entity.Account{}).TableName(),
 				Parser:     nil,
 				Sorter:     nil,
 			},
