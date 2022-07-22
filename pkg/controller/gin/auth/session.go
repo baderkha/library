@@ -12,6 +12,7 @@ import (
 	"github.com/baderkha/library/pkg/store/entity"
 	"github.com/baderkha/library/pkg/store/repository"
 	"github.com/badoux/checkmail"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	passwordvalidator "github.com/wagslane/go-password-validator"
 	"golang.org/x/crypto/bcrypt"
@@ -80,7 +81,7 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 			return
 		}
 	}
-
+	spew.Dump("writing cookie")
 	ctx.SetCookie(
 		c.CookieName,
 		session.ID,
