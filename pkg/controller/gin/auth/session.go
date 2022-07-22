@@ -318,10 +318,11 @@ func (c *SessionAuthGinController) ApplyRoutes(e *gin.Engine) *gin.Engine {
 	return e
 }
 
-func NewGinSessionAuthGorm(db *gorm.DB, basePathRoute string, cookieName string, loginExpiryTime time.Duration) *SessionAuthGinController {
+func NewGinSessionAuthGorm(db *gorm.DB, basePathRoute string, cookieName string, loginExpiryTime time.Duration, domain string) *SessionAuthGinController {
 	return &SessionAuthGinController{
 		URLPathPrefix:          basePathRoute,
 		AccountSessionDuration: loginExpiryTime,
+		Domain:                 domain,
 		Arepo: &repository.AccountGorm{
 			CrudGorm: repository.CrudGorm[entity.Account]{
 				DB:         db,
