@@ -326,6 +326,7 @@ func (c *SessionAuthGinController) ApplyRoutes(e *gin.Engine) *gin.Engine {
 
 func NewGinSessionAuthGorm(db *gorm.DB, basePathRoute string, cookieName string, loginExpiryTime time.Duration, domain string) *SessionAuthGinController {
 	return &SessionAuthGinController{
+		CookieName:             cookieName,
 		URLPathPrefix:          basePathRoute,
 		AccountSessionDuration: loginExpiryTime,
 		Domain:                 domain,
