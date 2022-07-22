@@ -70,7 +70,7 @@ func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.So
 		}
 		outSort = *outSPtr
 	}
-	sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 %s %s", c.Table, out.Query, outSort.RawQuery)
+	sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s %s", c.Table, out.Query, outSort.RawQuery)
 	err = c.DB.Raw(sql, args...).Find(&data).Error
 	return data, err
 }
@@ -120,7 +120,7 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 	go func() {
 		defer wg.Done()
 
-		sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 %s %s %s", c.Table, out.Query, outSort.RawQuery, limitClause)
+		sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND%s %s %s", c.Table, out.Query, outSort.RawQuery, limitClause)
 		err = c.DB.Raw(sql, args...).Find(&records).Error
 
 		mu.Lock()
@@ -131,7 +131,7 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 	go func() {
 		defer wg.Done()
 
-		sql := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE 1=1 %s %s", c.Table, out.Query, outSort.RawQuery)
+		sql := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE 1=1 AND %s %s", c.Table, out.Query, outSort.RawQuery)
 		_ = c.DB.Raw(sql, args...).Find(&count)
 
 		mu.Lock()
