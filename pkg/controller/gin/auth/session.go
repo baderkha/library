@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/baderkha/library/pkg/conditional"
+	"github.com/baderkha/library/pkg/controller/response"
 	"github.com/baderkha/library/pkg/store/entity"
 	"github.com/baderkha/library/pkg/store/repository"
 	"github.com/badoux/checkmail"
@@ -64,7 +65,7 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 
 		err := c.SRepo.Update(session)
 		if err != nil {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(err))
 			return
 		}
 
@@ -75,7 +76,7 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 
 		err := c.SRepo.Create(session)
 		if err != nil {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(err))
 			return
 		}
 	}
@@ -108,16 +109,16 @@ func (c *SessionAuthGinController) login(ctx *gin.Context) {
 	var info loginObj
 	err := ctx.BindJSON(&info)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
 		return
 	}
 	acc, err := c.Arepo.GetById(info.UserName)
 	if err != nil {
-		ctx.AbortWithError(http.StatusUnauthorized, errUnauthorized)
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
 		return
 	}
 	if c.validatePassword(acc.Password, info.Password) != nil {
-		ctx.AbortWithError(http.StatusUnauthorized, errUnauthorized)
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
 		return
 	}
 	c.SerializeSession(acc.ID, ctx, nil)
@@ -144,14 +145,14 @@ func (c *SessionAuthGinController) logout(ctx *gin.Context) {
 func (c *SessionAuthGinController) validateAccount(acc *entity.Account) error {
 	err := c.IsPasswordSafe(acc.Password)
 	if err != nil {
-		return fmt.Errorf("validation error : password  : %v", err)
+		return fmt.Errorf("validation error : password  : %v", response.NewError(err))
 	}
 	err = checkmail.ValidateFormat(acc.Email)
 	if err != nil {
-		return fmt.Errorf("validation error : email : %v", err)
+		return fmt.Errorf("validation error : email : %v", response.NewError(err))
 	}
 	if !regexUserId.Match([]byte(acc.ID)) {
-		return fmt.Errorf("validation error : account id : %v", errorAccountMustBeValid)
+		return fmt.Errorf("validation error : account id : %v", response.NewError(errorAccountMustBeValid))
 	}
 	return nil
 }
@@ -174,24 +175,24 @@ func (c *SessionAuthGinController) newAccount(ctx *gin.Context) {
 
 	err := ctx.BindJSON(&acc)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
 		return
 	}
 
 	err = c.validateAccount(&acc)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
 		return
 	}
 
 	if c.Arepo.DoesAccountExist(acc.ID, acc.Email) {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
 		return
 	}
 	acc = *(c.genHashAuth(&acc))
 	err = c.Arepo.Create(&acc)
 	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(err))
 		return
 	}
 
@@ -203,7 +204,7 @@ func (c *SessionAuthGinController) getAccountInfo(ctx *gin.Context) {
 	id := ctx.Param("id")
 	ac, err := c.Arepo.GetById(id)
 	if err != nil {
-		ctx.AbortWithError(http.StatusNotFound, errorNotFoundAccount)
+		ctx.AbortWithStatusJSON(http.StatusNotFound, response.NewError(errorNotFoundAccount))
 		return
 	}
 	ctx.JSON(200, c.toAccount(ac, true))
@@ -220,32 +221,32 @@ func (c *SessionAuthGinController) changePassword(ctx *gin.Context) {
 
 	err := ctx.ShouldBindJSON(&p)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
 		return
 	}
 
 	acc, err := c.Arepo.GetById(accId.(string))
 	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, errRepo)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
 		return
 	}
 
 	err = c.validatePassword(acc.Password, p.OldPassword)
 	if err != nil {
-		ctx.AbortWithError(http.StatusUnauthorized, errUnauthorized)
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
 		return
 	}
 
 	err = c.IsPasswordSafe(p.NewPassword)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
 		return
 	}
 	acc.Password = p.NewPassword
 	acc = c.genHashAuth(acc)
 	err = c.Arepo.Update(acc)
 	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, errRepo)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
 		return
 	}
 	ctx.JSON(http.StatusOK, c.toAccount(acc, false))
@@ -256,7 +257,7 @@ func (c *SessionAuthGinController) deleteAccount(ctx *gin.Context) {
 	id, _ := ctx.Get("account_id")
 	err := c.Arepo.DeleteById(id.(string))
 	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, errRepo)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
 		return
 	}
 	ctx.JSON(200, map[string]interface{}{"message": fmt.Sprintf("Deleted Account %s", id)})
@@ -267,7 +268,7 @@ func (c *SessionAuthGinController) validate(ctx *gin.Context) {
 	if sessionId != "" {
 		session, err := c.SRepo.GetById(sessionId)
 		if err != nil {
-			ctx.AbortWithError(http.StatusUnauthorized, errUnauthorized)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
 			return
 		}
 		// send the account id
@@ -277,7 +278,7 @@ func (c *SessionAuthGinController) validate(ctx *gin.Context) {
 		ctx.Next()
 		return
 	}
-	ctx.AbortWithError(http.StatusUnauthorized, errUnauthorized)
+	ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
 }
 
 func (c *SessionAuthGinController) GetAuthMiddleWare() gin.HandlerFunc {
@@ -291,7 +292,7 @@ func (c *SessionAuthGinController) pwdStrength(ctx *gin.Context) {
 	var p pwd
 	err := ctx.ShouldBindJSON(&p)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
 		return
 	}
 	err = c.IsPasswordSafe(p.Password)
