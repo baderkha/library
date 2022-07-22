@@ -13,6 +13,7 @@ var (
 // GetSchemaFromTaggedEntity : fetches a schema object from a model (panics on error!) , your models must all have json tags for this function
 func GetSchemaFromTaggedEntity(model interface{}, filterColTag string) *Schema {
 	var schemaOut Schema
+	schemaOut.supportedColumns = make(map[string]*FilterableEntity)
 	t := reflect.TypeOf(model)
 	for i := 0; i < t.NumField(); i++ {
 		val, exists := t.Field(i).Tag.Lookup("json")
