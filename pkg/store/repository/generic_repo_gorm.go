@@ -50,7 +50,7 @@ func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.So
 		out     rql.SQLOutput
 		outSort rql.SQLSortOutput
 		mdl     t
-		schema  = rql.GetSchemaFromTaggedEntity(&mdl, "db")
+		schema  = rql.GetSchemaFromTaggedEntity(mdl, "db")
 		args    []interface{}
 	)
 	if f != nil {
@@ -87,7 +87,7 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 		outSort rql.SQLSortOutput
 
 		mdl    t
-		schema = rql.GetSchemaFromTaggedEntity(&mdl, "db")
+		schema = rql.GetSchemaFromTaggedEntity(mdl, "db")
 
 		args    []interface{}
 		records []*t

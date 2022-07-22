@@ -18,11 +18,11 @@ func GetSchemaFromTaggedEntity(model interface{}, filterColTag string) *Schema {
 		val, exists := t.Field(i).Tag.Lookup("json")
 		internalVal, existsInternal := t.Field(i).Tag.Lookup(filterColTag)
 		if exists && existsInternal {
-			_, isFilterable := t.Field(i).Tag.Lookup("filterable")
-			_, isFuzzySearch := t.Field(i).Tag.Lookup("searchable")
+			_, isNotFilterable := t.Field(i).Tag.Lookup("not_filterable")
+			_, isNotFuzzySearch := t.Field(i).Tag.Lookup("not_searchable")
 			schemaOut.supportedColumns[val] = &FilterableEntity{
-				IsFilterable:       isFilterable,
-				IsFuzzySearchable:  isFuzzySearch,
+				IsFilterable:       !isNotFilterable,
+				IsFuzzySearchable:  !isNotFuzzySearch,
 				Type:               resolveJavaScriptType(t.Field(i)),
 				ColumnNameInternal: internalVal,
 			}
