@@ -89,7 +89,7 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 		60*60*24,
 		"/",
 		c.Domain,
-		true,
+		conditional.Ternary(os.Getenv("IS_LOCAL") == "TRUE", false, true),
 		conditional.Ternary(os.Getenv("IS_LOCAL") == "TRUE", false, true),
 	)
 
