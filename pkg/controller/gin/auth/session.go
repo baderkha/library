@@ -83,6 +83,9 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 		}
 	}
 	spew.Dump("writing cookie")
+	spew.Dump(c.CookieName)
+	spew.Dump(session.ID)
+	spew.Dump(os.Getenv("IS_LOCAL"))
 	ctx.SetCookie(
 		c.CookieName,
 		session.ID,
