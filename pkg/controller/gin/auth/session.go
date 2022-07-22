@@ -123,6 +123,7 @@ func (c *SessionAuthGinController) login(ctx *gin.Context) {
 		return
 	}
 	c.SerializeSession(acc.ID, ctx, nil)
+	ctx.String(http.StatusOK, "logged in")
 }
 
 func (c *SessionAuthGinController) IsPasswordSafe(p string) error {
