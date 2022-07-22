@@ -85,7 +85,7 @@ func (c *SessionAuthGinController) SerializeSession(accountID string, ctx *gin.C
 	ctx.SetCookie(
 		c.CookieName,
 		session.ID,
-		int(c.AccountSessionDuration/time.Minute),
+		60*60*24,
 		"/",
 		c.Domain,
 		true,
