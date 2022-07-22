@@ -4,7 +4,7 @@ import "time"
 
 type Account struct {
 	Base
-	Email    string `json:"email" db:"email" gorm:"type:index;varchar(255)"`
+	Email    string `json:"email" db:"email" gorm:"type:varchar(255);index"`
 	Password string `json:"password" db:"password" gorm:"type:varchar(255)"`
 }
 
