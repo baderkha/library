@@ -12,21 +12,39 @@ var (
 	errorValueNotFoundForVariable = errors.New("cannot find value for variable in filter expression ")
 )
 
+func FlattenAllFields(iface interface{}) []reflect.StructField {
+	fields := make([]reflect.StructField, 0)
+	ifv := reflect.ValueOf(iface)
+	ift := reflect.TypeOf(iface)
+
+	for i := 0; i < ift.NumField(); i++ {
+		v := ifv.Field(i)
+		t := ift.Field(i)
+		switch v.Kind() {
+		case reflect.Struct:
+			fields = append(fields, FlattenAllFields(v.Interface())...)
+		default:
+			fields = append(fields, t)
+		}
+	}
+	return fields
+}
+
 // GetSchemaFromTaggedEntity : fetches a schema object from a model (panics on error!) , your models must all have json tags for this function
 func GetSchemaFromTaggedEntity(model interface{}, filterColTag string) *Schema {
 	var schemaOut Schema
 	schemaOut.supportedColumns = make(map[string]*FilterableEntity)
-	t := reflect.TypeOf(model)
-	for i := 0; i < t.NumField(); i++ {
-		val, exists := t.Field(i).Tag.Lookup("json")
-		internalVal, existsInternal := t.Field(i).Tag.Lookup(filterColTag)
+	fields := FlattenAllFields(model)
+	for _, t := range fields {
+		val, exists := t.Tag.Lookup("json")
+		internalVal, existsInternal := t.Tag.Lookup(filterColTag)
 		if exists && existsInternal {
-			_, isNotFilterable := t.Field(i).Tag.Lookup("not_filterable")
-			_, isNotFuzzySearch := t.Field(i).Tag.Lookup("not_searchable")
+			_, isNotFilterable := t.Tag.Lookup("not_filterable")
+			_, isNotFuzzySearch := t.Tag.Lookup("not_searchable")
 			schemaOut.supportedColumns[val] = &FilterableEntity{
 				IsFilterable:       !isNotFilterable,
 				IsFuzzySearchable:  !isNotFuzzySearch,
-				Type:               resolveJavaScriptType(t.Field(i)),
+				Type:               resolveJavaScriptType(t),
 				ColumnNameInternal: internalVal,
 			}
 		}
