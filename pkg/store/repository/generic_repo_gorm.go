@@ -169,6 +169,12 @@ func (c *CrudGorm[t]) DeleteById(id string) error {
 	return err
 }
 
+func (c *CrudGorm[t]) DeleteByIds(id []string) error {
+	var res t
+	err := c.DB.Table(c.Table).Where(c.PrimaryKey+" in (?)", id).Delete(&res).Error
+	return err
+}
+
 func (c *CrudGorm[t]) WithTransaction(tx ITransaction) ICrud[t] {
 	dbtx := tx.(*GormTransaction)
 	return &CrudGorm[t]{

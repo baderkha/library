@@ -43,4 +43,6 @@ type IWriteOnly[t any] interface {
 	Update(mdl *t) error
 	// DeleteById : perma delete model by id
 	DeleteById(id string) error
+	// DeleteByIds : perma delet by many ids
+	DeleteByIds(id []string) error
 }
