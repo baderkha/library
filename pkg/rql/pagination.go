@@ -28,7 +28,7 @@ func (p *PaginationExpression) Size() int {
 
 func PaginationExpressionFromUserInput(page string, size string) (*PaginationExpression, error) {
 	page = conditional.Ternary(page == "", "1", page)
-	size = conditional.Ternary(page == "", "10", size)
+	size = conditional.Ternary(size == "", "10", size)
 	p, err := strconv.Atoi(page)
 	if err != nil {
 		return nil, errorPageNotANumber
