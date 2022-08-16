@@ -28,9 +28,9 @@ type IReadOnly[t any] interface {
 	// GetAll : get all the records (db dump)
 	GetAll() ([]*t, error)
 	// GetWithFilterExpression : filter + sort a result using the rql package
-	GetWithFilterExpression(f *rql.FilterExpression, s *rql.SortExpression) (data []*t, err error)
+	GetWithFilterExpression(f *rql.FilterExpression, s *rql.SortExpression, baseExpression ...*rql.FilterExpression) (data []*t, err error)
 	// GetWithFilterExpressionPaginated : filter + sort a result query with pagination using the rql package
-	GetWithFilterExpressionPaginated(f *rql.FilterExpression, p *rql.PaginationExpression, s *rql.SortExpression) (data *Paginated[t], err error)
+	GetWithFilterExpressionPaginated(f *rql.FilterExpression, p *rql.PaginationExpression, s *rql.SortExpression, baseExpression ...*rql.FilterExpression) (data *Paginated[t], err error)
 }
 
 // IWriteOnly : repo that only does write operations

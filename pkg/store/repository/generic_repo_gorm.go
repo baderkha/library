@@ -45,9 +45,10 @@ func (c *CrudGorm[t]) IsForAccountID(id string, accountID string) bool {
 }
 
 // GetWithFilterExpression : filter + sort a result using the rql package
-func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.SortExpression) (data []*t, err error) {
+func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.SortExpression, baseExpression ...*rql.FilterExpression) (data []*t, err error) {
 	var (
 		out     rql.SQLOutput
+		outBase rql.SQLOutput
 		outSort rql.SQLSortOutput
 		mdl     t
 		schema  = rql.GetSchemaFromTaggedEntity(mdl, "db")
@@ -63,6 +64,16 @@ func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.So
 			args = append(args, out.Args...)
 		}
 	}
+	if len(baseExpression) > 0 && baseExpression[0] != nil {
+		outPtr, err := c.Parser.Parse(baseExpression[0], schema)
+		if err != nil {
+			return nil, err
+		}
+		outBase = *outPtr
+		if outBase.Args != nil && len(outBase.Args) > 0 {
+			args = append(args, outBase.Args...)
+		}
+	}
 	if s != nil {
 		outSPtr, err := c.Sorter.Parse(s, schema)
 		if err != nil {
@@ -71,13 +82,14 @@ func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.So
 		outSort = *outSPtr
 	}
 	out.Query = conditional.Ternary(out.Query == "", " 1=1", out.Query)
-	sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s %s", c.Table, out.Query, outSort.RawQuery)
+	outBase.Query = conditional.Ternary(outBase.Query == "", "1=1", out.Query)
+	sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s AND %s %s", c.Table, out.Query, outBase.Query, outSort.RawQuery)
 	err = c.DB.Raw(sql, args...).Find(&data).Error
 	return data, err
 }
 
 // GetWithFilterExpressionPaginated : filter + sort a result query with pagination using the rql package
-func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, p *rql.PaginationExpression, s *rql.SortExpression) (data *Paginated[t], err error) {
+func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, p *rql.PaginationExpression, s *rql.SortExpression, baseExpression ...*rql.FilterExpression) (data *Paginated[t], err error) {
 	var (
 		page        int64 = conditional.Ternary(p != nil, int64(p.Page()), 0)
 		limit       int64 = conditional.Ternary(p != nil, int64(p.Size()), 10)
@@ -85,6 +97,7 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 		limitClause       = fmt.Sprintf("LIMIT %d OFFSET %d", limit, offset)
 
 		out     rql.SQLOutput
+		outBase rql.SQLOutput
 		outSort rql.SQLSortOutput
 
 		mdl    t
@@ -109,6 +122,16 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 			args = append(args, out.Args...)
 		}
 	}
+	if len(baseExpression) > 0 && baseExpression[0] != nil {
+		outPtr, err := c.Parser.Parse(baseExpression[0], schema)
+		if err != nil {
+			return nil, err
+		}
+		outBase = *outPtr
+		if outBase.Args != nil && len(outBase.Args) > 0 {
+			args = append(args, outBase.Args...)
+		}
+	}
 	if s != nil {
 		outSPtr, err := c.Sorter.Parse(s, schema)
 		if err != nil {
@@ -117,11 +140,14 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 		outSort = *outSPtr
 	}
 
+	out.Query = conditional.Ternary(out.Query == "", "1=1", out.Query)
+	outBase.Query = conditional.Ternary(outBase.Query == "", "1=1", out.Query)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		out.Query = conditional.Ternary(out.Query == "", "1=1", out.Query)
-		sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s %s %s", c.Table, out.Query, outSort.RawQuery, limitClause)
+
+		sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s AND %s %s %s", c.Table, out.Query, outBase.Query, outSort.RawQuery, limitClause)
 		err = c.DB.Raw(sql, args...).Find(&records).Error
 
 		mu.Lock()
@@ -131,8 +157,8 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		out.Query = conditional.Ternary(out.Query == "", "1=1", out.Query)
-		sql := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE 1=1 AND %s %s", c.Table, out.Query, outSort.RawQuery)
+
+		sql := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE 1=1 AND %s AND %s", c.Table, out.Query, outBase.Query)
 		_ = c.DB.Raw(sql, args...).Find(&count)
 
 		mu.Lock()
