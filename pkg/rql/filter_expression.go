@@ -1,6 +1,8 @@
 package rql
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
@@ -49,6 +51,27 @@ func (f *FilterExpression) MapVariablesToValue(vars map[string]interface{}) erro
 func FilterExpressionFromMap(expr map[string]interface{}) (*FilterExpression, error) {
 	var f FilterExpression
 	err := mapstructure.Decode(expr, &f)
+	if err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+// FilterExpressionFromUserInput : generate filter expression from string encoding
+func FilterExpressionFromUserInput(expr string, isBase64 bool) (*FilterExpression, error) {
+
+	// parse base 64
+	if isBase64 {
+		bExpr, err := base64.StdEncoding.DecodeString(expr)
+		if err != nil {
+			return nil, err
+		}
+		expr = string(bExpr)
+	}
+
+	// json decode
+	var f FilterExpression
+	err := json.Unmarshal([]byte(expr), &f)
 	if err != nil {
 		return nil, err
 	}
