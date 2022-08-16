@@ -20,14 +20,21 @@ type SortExpression struct {
 
 // SortExpressionFromUserInput : sort expression from user input
 func SortExpressionFromUserInput(sortStr string) (*SortExpression, error) {
+
+	if sortStr == "" {
+		return &SortExpression{
+			sortMap: make(map[string]string, 0),
+		}, nil
+	}
 	exprAr := strings.Split(sortStr, ",")
 	sortMap := make(map[string]string, len(exprAr))
+
 	for _, item := range exprAr {
 		kv := strings.Split(item, "::")
-		if len(kv) != 1 {
+		if len(kv) != 2 {
 			return nil, ErrBadSortExpression
 		}
-		if kv[1] != DESC || kv[1] != ASC {
+		if kv[1] != DESC && kv[1] != ASC {
 			return nil, ErrBadSortExpressionValue
 		}
 		sortMap[kv[0]] = kv[1]
