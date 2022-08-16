@@ -22,9 +22,11 @@ type SortParserSQL struct {
 }
 
 // Parse : parse an expression and turn it into sql expression
-func (s *SortParserSQL) Parse(expression *SortExpression, schema *Schema) (out *SQLSortOutput, err error) {
+func (s SortParserSQL) Parse(expression *SortExpression, schema *Schema) (out *SQLSortOutput, err error) {
+	out = &SQLSortOutput{}
 	for k, v := range expression.sortMap {
-		if v != DESC || v != ASC {
+
+		if v != DESC && v != ASC {
 			return nil, ErrBadSortExpressionValue
 		}
 		if !schema.IsSortable(k) {

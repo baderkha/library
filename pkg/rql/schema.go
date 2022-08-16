@@ -18,15 +18,22 @@ func FlattenAllFields(iface interface{}) []reflect.StructField {
 	ift := reflect.TypeOf(iface)
 
 	for i := 0; i < ift.NumField(); i++ {
+
 		v := ifv.Field(i)
 		t := ift.Field(i)
 		switch v.Kind() {
 		case reflect.Struct:
-			fields = append(fields, FlattenAllFields(v.Interface())...)
+			if v.Type().Name() == "Time" {
+				fields = append(fields, t)
+			} else {
+				fields = append(fields, FlattenAllFields(v.Interface())...)
+			}
+
 		default:
 			fields = append(fields, t)
 		}
 	}
+
 	return fields
 }
 
@@ -66,6 +73,8 @@ func resolveJavaScriptType(v reflect.StructField) string {
 		return "number"
 	case "string":
 		return "string"
+	case "time.Time":
+		return "Date"
 	case "bool":
 		return "boolean"
 	}

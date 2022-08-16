@@ -14,7 +14,8 @@ func (a *Account) TableName() string {
 
 type Session struct {
 	BaseOwned
-	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
+	ExpiresAt     time.Time `json:"expires_at" db:"expires_at"`
+	SomethingElse time.Time `json:"something_else" db:"something_else"`
 }
 
 func (s *Session) TableName() string {
