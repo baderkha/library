@@ -65,11 +65,11 @@ func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.So
 		}
 	}
 	if len(baseExpression) > 0 && baseExpression[0] != nil {
-		outPtr, err := c.Parser.Parse(baseExpression[0], schema)
+		outPtr2, err := c.Parser.Parse(baseExpression[0], schema)
 		if err != nil {
 			return nil, err
 		}
-		outBase = *outPtr
+		outBase = *outPtr2
 		if outBase.Args != nil && len(outBase.Args) > 0 {
 			args = append(args, outBase.Args...)
 		}
@@ -82,7 +82,7 @@ func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.So
 		outSort = *outSPtr
 	}
 	out.Query = conditional.Ternary(out.Query == "", " 1=1", out.Query)
-	outBase.Query = conditional.Ternary(outBase.Query == "", "1=1", out.Query)
+	outBase.Query = conditional.Ternary(outBase.Query == "", "1=1", outBase.Query)
 	sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s AND %s %s", c.Table, out.Query, outBase.Query, outSort.RawQuery)
 	err = c.DB.Raw(sql, args...).Find(&data).Error
 	return data, err
@@ -123,11 +123,11 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 		}
 	}
 	if len(baseExpression) > 0 && baseExpression[0] != nil {
-		outPtr, err := c.Parser.Parse(baseExpression[0], schema)
+		outPtr2, err := c.Parser.Parse(baseExpression[0], schema)
 		if err != nil {
 			return nil, err
 		}
-		outBase = *outPtr
+		outBase = *outPtr2
 		if outBase.Args != nil && len(outBase.Args) > 0 {
 			args = append(args, outBase.Args...)
 		}
@@ -141,7 +141,7 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 	}
 
 	out.Query = conditional.Ternary(out.Query == "", "1=1", out.Query)
-	outBase.Query = conditional.Ternary(outBase.Query == "", "1=1", out.Query)
+	outBase.Query = conditional.Ternary(outBase.Query == "", "1=1", outBase.Query)
 
 	wg.Add(1)
 	go func() {
