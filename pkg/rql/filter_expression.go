@@ -60,7 +60,7 @@ func FilterExpressionFromMap(expr map[string]interface{}) (*FilterExpression, er
 
 // FilterExpressionFromUserInput : generate filter expression from string encoding
 func FilterExpressionFromUserInput(expr string, isBase64 bool) (*FilterExpression, error) {
-	expr = conditional.Ternary(expr == "", `{"operation":"AND"}`, "")
+	expr = conditional.Ternary(expr == "", `{"operation":"AND"}`, expr)
 	// parse base 64
 	if isBase64 && expr != "" {
 		bExpr, err := base64.StdEncoding.DecodeString(expr)
