@@ -681,7 +681,9 @@ func NewGinSessionAuthGorm(s *SessionConfig) *SessionAuthGinController {
 		Tx: &repository.GormTransaction{
 			DB: s.DB,
 		},
-		MailValidation: s.Mailer,
+		MailValidation:            s.Mailer,
+		ResetPasswordTemplateHTML: s.ResetPasswordTemplateHTML,
+		VerifyAccountTemplateHTML: s.ResetPasswordTemplateHTML,
 		BaseMailConfig: email.Content{
 			FromUserFriendlyName: s.EmailSenderUserFriendly,
 			From:                 s.EmailSender,
