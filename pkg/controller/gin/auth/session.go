@@ -250,7 +250,7 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 
 	// persist model
 	hashVerificationForAccount := entity.HashVerificationAccount{
-		ID:        string(hash[:]),
+		ID:        fmt.Sprintf("%x", hash[:]),
 		AccountID: acc.ID,
 		Email:     acc.Email,
 		TTLExpiry: time.Now().Add(c.Verification_PasswordResetDuration),
@@ -338,7 +338,7 @@ func (c *SessionAuthGinController) verifyValidationLink(ctx *gin.Context) {
 	}
 
 	hash := sha256.Sum256([]byte(signature))
-	signature = string(hash[:])
+	signature = fmt.Sprintf("%x", hash[:])
 
 	acc, isValid := c.verifyValidationHashAndGrabAccount(signature)
 	if !isValid {
