@@ -4,8 +4,6 @@ import (
 	"errors"
 	"reflect"
 	"strings"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 var (
@@ -55,7 +53,6 @@ func GetSchemaFromTaggedEntity(model interface{}, filterColTag string) *Schema {
 			}
 		}
 	}
-	spew.Dump(schemaOut)
 	return &schemaOut
 }
 
