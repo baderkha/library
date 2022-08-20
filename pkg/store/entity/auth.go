@@ -4,7 +4,7 @@ import "time"
 
 type Account struct {
 	Base
-	Email      string `json:"email" db:"email" gorm:"type:varchar(255);index"`
+	Email      string `json:"email" db:"email" gorm:"type:varchar(255);index;unique"`
 	Password   string `json:"password" db:"password" gorm:"type:varchar(255)"`
 	IsVerified bool   `json:"is_verified" db:"is_verified"`
 	IsSSO      bool   `json:"is_sso"` // is an sso account
