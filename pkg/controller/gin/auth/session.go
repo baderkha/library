@@ -17,6 +17,7 @@ import (
 	"github.com/baderkha/library/pkg/store/entity"
 	"github.com/baderkha/library/pkg/store/repository"
 	"github.com/badoux/checkmail"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid"
 	"github.com/sethvargo/go-password/password"
@@ -264,6 +265,7 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 	config := c.BaseMailConfig
 	config.To = acc.Email
 	config.ToFriendlyName = acc.Email
+	config.Subject = Type
 
 	switch Type {
 	case entity.HashVerificationAccountTypeResetPass:
@@ -291,6 +293,8 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 	default:
 		return errUnauthorized
 	}
+
+	spew.Dump(config)
 
 	return c.MailValidation.SendHTMLEmail(&c.BaseMailConfig)
 }
