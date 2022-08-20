@@ -73,11 +73,11 @@ type passwordResetLinkObject struct {
 type SessionAuthGinController struct {
 
 	// uris / cookies
-	CookieName       string
-	Domain           string
-	FrontEndDomain   string
-	PasswordResetURL string
-	URLPathPrefix    string
+	CookieName         string
+	Domain             string
+	PasswordResetURL   string
+	VerifyEmailURLFull string
+	URLPathPrefix      string
 
 	AccountSessionDuration             time.Duration
 	Verification_PasswordResetDuration time.Duration
@@ -304,12 +304,10 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 		break
 	case entity.HashVerificationAccountTypeVerify:
 		config.Body = fmt.Sprintf(
-			`<strong> Please %s with this link   <a href="https://%s/%s/%s?signature=%s"> here </a> </strong>. 
+			`<strong> Please %s with this link   <a href="%s?signature=%s"> here </a> </strong>. 
 		If You did not request either a (%s) , ignore this email.`,
 			hashVerificationForAccount.Type,
-			c.Domain,
-			c.URLPathPrefix,
-			"/email/_verify",
+			c.VerifyEmailURLFull,
 			pwdB64,
 			strings.Join([]string{entity.HashVerificationAccountTypeVerify, entity.HashVerificationAccountTypeResetPass}, " , "),
 		)
@@ -363,7 +361,6 @@ func (c *SessionAuthGinController) verifyValidationLink(ctx *gin.Context) {
 	)
 
 	signature := ctx.Query("signature")
-	redirectClient := ctx.Query("redirect") == "TRUE"
 
 	if signature == "" {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
@@ -385,11 +382,6 @@ func (c *SessionAuthGinController) verifyValidationLink(ctx *gin.Context) {
 
 	if errUpdateDB != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
-		return
-	}
-
-	if redirectClient {
-		ctx.Redirect(http.StatusTemporaryRedirect, c.FrontEndDomain)
 		return
 	}
 
@@ -604,10 +596,10 @@ type SessionConfig struct {
 	Domain string
 	// SSOConfig : sso configuration , if you want /login/sso route working
 	SSOConfig sso.Config
-	// FrontEndDomain : front end domain for default redirect
-	FrontEndDomain string
 	// PasswordResetURLFull : password reset forgotten page
 	PasswordResetURLFull string
+	// VerifyEmailURLFull : email verifiaction page for your front end
+	VerifyEmailURLFull string
 	// PasswordResetLinkDuration : expiry time for the reset link
 	PasswordResetLinkDuration time.Duration
 	// Mailer : email client you want to use
@@ -641,8 +633,8 @@ func NewGinSessionAuthGorm(s *SessionConfig) *SessionAuthGinController {
 			Sorter:     nil,
 		},
 		SSOHandler:                         sso.New(s.SSOConfig),
-		FrontEndDomain:                     s.FrontEndDomain,
 		PasswordResetURL:                   s.PasswordResetURLFull,
+		VerifyEmailURLFull:                 s.VerifyEmailURLFull,
 		Verification_PasswordResetDuration: s.PasswordResetLinkDuration,
 		Hrepo: &repository.CrudGorm[entity.HashVerificationAccount]{
 			DB:         s.DB,
