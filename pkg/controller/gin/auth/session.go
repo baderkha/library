@@ -58,21 +58,41 @@ type passwordResetLinkObject struct {
 	emailVerificationObj
 }
 
+// SessionAuthGinController : a fully featured highly opinionated gin session authentication controller
+// which has support for the following :
+//
+// 1) login regular user pwd / sso
+//
+// 2) logout
+//
+// 3) password change + password change if forgotten
+//
+// 4) account verification
+//
+// 5) password strength check
 type SessionAuthGinController struct {
-	CookieName                         string
-	Domain                             string
-	FrontEndDomain                     string
-	PasswordResetURL                   string
-	URLPathPrefix                      string
+
+	// uris / cookies
+	CookieName       string
+	Domain           string
+	FrontEndDomain   string
+	PasswordResetURL string
+	URLPathPrefix    string
+
 	AccountSessionDuration             time.Duration
 	Verification_PasswordResetDuration time.Duration
-	Arepo                              repository.IAccount
-	SRepo                              repository.ISession
-	Hrepo                              repository.IHashVerificationAccount
-	Tx                                 repository.ITransaction
-	MailValidation                     email.ISender
-	BaseMailConfig                     email.Content
-	SSOHandler                         sso.Handler
+
+	// repos
+	Arepo repository.IAccount
+	SRepo repository.ISession
+	Hrepo repository.IHashVerificationAccount
+	Tx    repository.ITransaction
+	// email sender config
+	MailValidation email.ISender
+	BaseMailConfig email.Content
+
+	// sso support
+	SSOHandler sso.Handler
 }
 
 func (c *SessionAuthGinController) toAccount(e *entity.Account, emailRedact bool) *entity.Account {

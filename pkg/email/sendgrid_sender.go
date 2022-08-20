@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
@@ -55,15 +54,12 @@ func (s *SendGridSender) SendEmail(c *Content) error {
 		s.sendGridEmailMappingCache[toEmailCacheKey] = to
 		s.mu.Unlock()
 	}
-	spew.Dump(from, c.Subject, to, c.Body, c.Body)
 	message := mail.NewSingleEmail(from, c.Subject, to, c.Body, c.Body)
 	res, err := s.client.Send(message)
 	_ = res
 	if err != nil {
 		return err
 	}
-
-	spew.Dump(res)
 
 	return nil
 }
