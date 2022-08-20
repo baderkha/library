@@ -270,7 +270,7 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 	switch Type {
 	case entity.HashVerificationAccountTypeResetPass:
 		config.Body = fmt.Sprintf(
-			`<strong> Please %s with this link  <a href="%s?signature=%s"/> </strong>. 
+			`<strong> Please %s with this link  <a href="%s?signature=%s"> here </a> </strong>. 
 		If You did not request either a (%s) , ignore this email.`,
 			hashVerificationForAccount.Type,
 			c.PasswordResetURL,
@@ -280,7 +280,7 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 		break
 	case entity.HashVerificationAccountTypeVerify:
 		config.Body = fmt.Sprintf(
-			`<strong> Please %s with this link  <a href="%s%s%s?signature=%s"/> </strong>. 
+			`<strong> Please %s with this link   <a href="https://%s/%s/%s?signature=%s"> here </a> </strong>. 
 		If You did not request either a (%s) , ignore this email.`,
 			hashVerificationForAccount.Type,
 			c.Domain,
