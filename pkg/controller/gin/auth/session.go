@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"regexp"
 	"strings"
@@ -58,6 +60,10 @@ type passwordResetLinkObject struct {
 	emailVerificationObj
 }
 
+type htmlOperationTemplateData struct {
+	Link string
+}
+
 // SessionAuthGinController : a fully featured highly opinionated gin session authentication controller
 // which has support for the following :
 //
@@ -93,6 +99,10 @@ type SessionAuthGinController struct {
 
 	// sso support
 	SSOHandler sso.Handler
+
+	// html templates here
+	ResetPasswordTemplateHTML []byte
+	VerifyAccountTemplateHTML []byte
 }
 
 func (c *SessionAuthGinController) toAccount(e *entity.Account, emailRedact bool) *entity.Account {
@@ -290,27 +300,48 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 	config.To = acc.Email
 	config.ToFriendlyName = acc.Email
 	config.Subject = Type
-
+	t := template.New("operation")
 	switch Type {
 	case entity.HashVerificationAccountTypeResetPass:
-		config.Body = fmt.Sprintf(
-			`<strong> Please %s with this link  <a href="%s?signature=%s"> here </a> </strong>. 
+		t, err := t.Parse(string(c.ResetPasswordTemplateHTML))
+		if err != nil && len(c.ResetPasswordTemplateHTML) > 0 {
+			var writer bytes.Buffer
+			t.Execute(&writer, &htmlOperationTemplateData{
+				fmt.Sprintf("%s?signature=%s", c.PasswordResetURL, pwdB64),
+			})
+			config.Body = writer.String()
+		} else {
+
+			config.Body = fmt.Sprintf(
+				`<strong> Please %s with this link  <a href="%s?signature=%s"> here </a> </strong>. 
 		If You did not request either a (%s) , ignore this email.`,
-			hashVerificationForAccount.Type,
-			c.PasswordResetURL,
-			pwdB64,
-			strings.Join([]string{entity.HashVerificationAccountTypeVerify, entity.HashVerificationAccountTypeResetPass}, " , "),
-		)
+				hashVerificationForAccount.Type,
+				c.PasswordResetURL,
+				pwdB64,
+				strings.Join([]string{entity.HashVerificationAccountTypeVerify, entity.HashVerificationAccountTypeResetPass}, " , "),
+			)
+		}
+
 		break
 	case entity.HashVerificationAccountTypeVerify:
-		config.Body = fmt.Sprintf(
-			`<strong> Please %s with this link   <a href="%s?signature=%s"> here </a> </strong>. 
+		t, err := t.Parse(string(c.VerifyAccountTemplateHTML))
+		if err != nil && len(c.VerifyAccountTemplateHTML) > 0 {
+			var writer bytes.Buffer
+			t.Execute(&writer, &htmlOperationTemplateData{
+				fmt.Sprintf("%s?signature=%s", c.VerifyEmailURLFull, pwdB64),
+			})
+			config.Body = writer.String()
+		} else {
+			config.Body = fmt.Sprintf(
+				`<strong> Please %s with this link   <a href="%s?signature=%s"> here </a> </strong>. 
 		If You did not request either a (%s) , ignore this email.`,
-			hashVerificationForAccount.Type,
-			c.VerifyEmailURLFull,
-			pwdB64,
-			strings.Join([]string{entity.HashVerificationAccountTypeVerify, entity.HashVerificationAccountTypeResetPass}, " , "),
-		)
+				hashVerificationForAccount.Type,
+				c.VerifyEmailURLFull,
+				pwdB64,
+				strings.Join([]string{entity.HashVerificationAccountTypeVerify, entity.HashVerificationAccountTypeResetPass}, " , "),
+			)
+		}
+
 		break
 	default:
 		return errUnauthorized
@@ -608,6 +639,10 @@ type SessionConfig struct {
 	EmailSender string
 	// EmailSenderUserFriendly : your app's offical email , user friendly name (ie Password Reset <Your App Name>)
 	EmailSenderUserFriendly string
+	// ResetPasswordTemplateHTML : your app's html template for this operation as []byte , the file grabbing portion is your bit
+	ResetPasswordTemplateHTML []byte
+	// VerifyAccountTemplateHTML : your app's html template this operation as []byte , the file grabbing portion is your bit
+	VerifyAccountTemplateHTML []byte
 }
 
 func NewGinSessionAuthGorm(s *SessionConfig) *SessionAuthGinController {

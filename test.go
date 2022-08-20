@@ -1,19 +1,25 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"fmt"
+	"bytes"
+	"html/template"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 func main() {
-	s := "Hello"
+	var b []byte
+	b = nil
 
-	key := "FDJ1mnhuzjFjTdwhq7DtZG2Cq9kuuEZCG"
-	h := hmac.New(sha256.New, []byte(key))
+	s := string(b)
+	_ = s
+	spew.Dump(s)
 
-	h.Write([]byte(s))
-	fmt.Printf("%x\n", h.Sum(nil))
+	t := template.New("some")
+	t, err := t.Parse(`<a href={{.ahmad}}> {{.ahmad}} </a>`)
+	spew.Dump(err)
+	var buf bytes.Buffer
+	t.Execute(&buf, map[string]interface{}{"ahmad": "123"})
+	spew.Dump(buf.String())
 
-	fmt.Printf("%x\n", sha256.Sum256([]byte(s)))
 }
