@@ -320,6 +320,9 @@ func (c *SessionAuthGinController) sendVerificationLink(Type string) gin.Handler
 }
 
 func (c *SessionAuthGinController) verifyValidationHashAndGrabAccount(hash string) (acc *entity.Account, isValid bool) {
+	hashByte := (sha256.Sum256([]byte(hash)))
+	hash = fmt.Sprintf("%x", hashByte[:])
+
 	hashRes, err := c.Hrepo.GetById(hash)
 
 	isValid = err == nil && !hashRes.HasBeenUsed && hashRes.TTLExpiry.Unix() > time.Now().Unix()
