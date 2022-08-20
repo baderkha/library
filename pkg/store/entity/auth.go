@@ -37,3 +37,7 @@ type HashVerificationAccount struct {
 	Type        string    `json:"type" db:"type" gorm:"type:varchar(40)"`
 	HasBeenUsed bool      `json:"has_been_used" db:"has_been_used"`
 }
+
+func (h *HashVerificationAccount) TableName() string {
+	return "hash_verification_account"
+}

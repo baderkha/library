@@ -573,10 +573,17 @@ type SessionConfig struct {
 	FrontEndDomain string
 	// PasswordResetURLFull : password reset forgotten page
 	PasswordResetURLFull string
+	// PasswordResetLinkDuration : expiry time for the reset link
+	PasswordResetLinkDuration time.Duration
+	// Mailer : email client you want to use
+	Mailer email.ISender
+	// EmailSender : your app's official email for transactions (no reply email)
+	EmailSender string
+	// EmailSenderUserFriendly : your app's offical email , user friendly name (ie Password Reset <Your App Name>)
+	EmailSenderUserFriendly string
 }
 
 func NewGinSessionAuthGorm(s *SessionConfig) *SessionAuthGinController {
-
 	return &SessionAuthGinController{
 		CookieName:             s.CookieName,
 		URLPathPrefix:          s.BasePathRoute,
@@ -598,8 +605,24 @@ func NewGinSessionAuthGorm(s *SessionConfig) *SessionAuthGinController {
 			Parser:     nil,
 			Sorter:     nil,
 		},
-		SSOHandler:       sso.New(s.SSOConfig),
-		FrontEndDomain:   s.FrontEndDomain,
-		PasswordResetURL: s.PasswordResetURLFull,
+		SSOHandler:                         sso.New(s.SSOConfig),
+		FrontEndDomain:                     s.FrontEndDomain,
+		PasswordResetURL:                   s.PasswordResetURLFull,
+		Verification_PasswordResetDuration: s.PasswordResetLinkDuration,
+		Hrepo: &repository.CrudGorm[entity.HashVerificationAccount]{
+			DB:         s.DB,
+			PrimaryKey: "id",
+			Table:      (&entity.HashVerificationAccount{}).TableName(),
+			Parser:     nil,
+			Sorter:     nil,
+		},
+		Tx: &repository.GormTransaction{
+			DB: s.DB,
+		},
+		MailValidation: s.Mailer,
+		BaseMailConfig: email.Content{
+			FromUserFriendlyName: s.EmailSenderUserFriendly,
+			From:                 s.EmailSender,
+		},
 	}
 }
