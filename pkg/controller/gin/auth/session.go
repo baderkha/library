@@ -1,26 +1,34 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/baderkha/library/pkg/conditional"
+	"github.com/baderkha/library/pkg/controller/gin/auth/sso"
 	"github.com/baderkha/library/pkg/controller/response"
+	"github.com/baderkha/library/pkg/email"
 	"github.com/baderkha/library/pkg/store/entity"
 	"github.com/baderkha/library/pkg/store/repository"
 	"github.com/badoux/checkmail"
 	"github.com/gin-gonic/gin"
+	"github.com/gofrs/uuid"
+	"github.com/sethvargo/go-password/password"
 	passwordvalidator "github.com/wagslane/go-password-validator"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 const (
-	MinEntropy = 65
-	BcryptCost = 12
+	MinEntropy     = 65
+	BcryptCost     = 12
+	BcryptCostWeak = 10
 )
 
 var (
@@ -41,13 +49,25 @@ type loginObj struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type emailVerificationObj struct {
+	Email string
+}
+
 type SessionAuthGinController struct {
-	CookieName             string
-	Domain                 string
-	URLPathPrefix          string
-	AccountSessionDuration time.Duration
-	Arepo                  repository.IAccount
-	SRepo                  repository.ISession
+	CookieName                         string
+	Domain                             string
+	FrontEndDomain                     string
+	PasswordResetURL                   string
+	URLPathPrefix                      string
+	AccountSessionDuration             time.Duration
+	Verification_PasswordResetDuration time.Duration
+	Arepo                              repository.IAccount
+	SRepo                              repository.ISession
+	Hrepo                              repository.IHashVerificationAccount
+	Tx                                 repository.ITransaction
+	MailValidation                     email.ISender
+	BaseMailConfig                     email.Content
+	SSOHandler                         sso.Handler
 }
 
 func (c *SessionAuthGinController) toAccount(e *entity.Account, emailRedact bool) *entity.Account {
@@ -126,7 +146,7 @@ func (c *SessionAuthGinController) login(ctx *gin.Context) {
 			return
 		}
 		acc, err := c.Arepo.GetById(info.UserName)
-		if err != nil {
+		if err != nil || acc.IsSSO {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
 			return
 		}
@@ -135,6 +155,32 @@ func (c *SessionAuthGinController) login(ctx *gin.Context) {
 			return
 		}
 		c.SerializeSession(acc.ID, ctx, nil)
+	}
+	ctx.String(http.StatusOK, "LOGGED IN")
+}
+
+// once user is login we will use our own session logic
+func (c *SessionAuthGinController) loginSSO(ctx *gin.Context) {
+	if !c.IsLoggedIn(ctx) {
+		acc, err := c.SSOHandler.VerifyUser(ctx.Request.Header)
+		if err != nil {
+			fmt.Println(err)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
+			return
+		}
+
+		doesAccountExist, dbAccount := c.Arepo.DoesAccountExistByEmail(acc.Email)
+		if !doesAccountExist {
+			acc.New()
+			err := c.Arepo.Create(acc)
+			if err != nil {
+				ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
+				return
+			}
+			dbAccount = acc
+		}
+
+		c.SerializeSession(dbAccount.ID, ctx, nil)
 	}
 	ctx.String(http.StatusOK, "LOGGED IN")
 }
@@ -185,6 +231,138 @@ func (c *SessionAuthGinController) validatePassword(hash string, inputPassword s
 	return nil
 }
 
+func (c *SessionAuthGinController) onNewAccount(acc *entity.Account) error {
+	// email to the client
+	err := c.sendVerificationEmail(acc, entity.HashVerificationAccountTypeVerify)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Type string) error {
+	uuid, _ := uuid.NewV4()
+
+	pwdB64 := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s_%s", password.MustGenerate(64, 10, 0, false, true), uuid.String())))
+
+	// weak hash since we'll delete it after usage
+	hash := sha256.Sum256([]byte(pwdB64))
+
+	// persist model
+	hashVerificationForAccount := entity.HashVerificationAccount{
+		ID:        string(hash[:]),
+		AccountID: acc.ID,
+		Email:     acc.Email,
+		TTLExpiry: time.Now().Add(c.Verification_PasswordResetDuration),
+		Type:      Type,
+	}
+
+	err := c.Hrepo.Create(&hashVerificationForAccount)
+	if err != nil {
+		return err
+	}
+	config := c.BaseMailConfig
+	config.To = acc.Email
+	config.ToFriendlyName = acc.Email
+
+	switch Type {
+	case entity.HashVerificationAccountTypeResetPass:
+		config.Body = fmt.Sprintf(
+			`<strong> Please %s with this link  <a href="%s?signature=%s"/> </strong>. 
+		If You did not request either a (%s) , ignore this email.`,
+			hashVerificationForAccount.Type,
+			c.PasswordResetURL,
+			pwdB64,
+			strings.Join([]string{entity.HashVerificationAccountTypeVerify, entity.HashVerificationAccountTypeResetPass}, " , "),
+		)
+		break
+	case entity.HashVerificationAccountTypeVerify:
+		config.Body = fmt.Sprintf(
+			`<strong> Please %s with this link  <a href="%s%s%s?signature=%s"/> </strong>. 
+		If You did not request either a (%s) , ignore this email.`,
+			hashVerificationForAccount.Type,
+			c.Domain,
+			c.URLPathPrefix,
+			"/email/_verify",
+			pwdB64,
+			strings.Join([]string{entity.HashVerificationAccountTypeVerify, entity.HashVerificationAccountTypeResetPass}, " , "),
+		)
+		break
+	default:
+		return errUnauthorized
+	}
+
+	return c.MailValidation.SendHTMLEmail(&c.BaseMailConfig)
+}
+
+func (c *SessionAuthGinController) sendVerificationEmailRest(ctx *gin.Context) {
+	var e emailVerificationObj
+	err := ctx.BindJSON(&e)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
+		return
+	}
+	isExist, acc := c.Arepo.DoesAccountExistByEmail(e.Email)
+	if isExist {
+		_ = c.sendVerificationEmail(acc, entity.HashVerificationAccountTypeVerify)
+	}
+	ctx.JSON(http.StatusOK, "ok")
+}
+
+func (c *SessionAuthGinController) verifyValidationHashAndGrabAccount(hash string) (acc *entity.Account, isValid bool) {
+	hashRes, err := c.Hrepo.GetById(hash)
+
+	isValid = err == nil && !hashRes.HasBeenUsed && hashRes.TTLExpiry.Unix() > time.Now().Unix()
+
+	if isValid {
+		acc, err = c.Arepo.GetById(hashRes.AccountID)
+		hashRes.HasBeenUsed = true
+		_ = c.Hrepo.Update(hashRes)
+	}
+	return acc, isValid && err == nil
+
+}
+
+func (c *SessionAuthGinController) verifyValidationLink(ctx *gin.Context) {
+
+	var (
+		errUpdateDB error
+	)
+
+	signature := ctx.Query("signature")
+	redirectClient := ctx.Query("redirect") == "TRUE"
+
+	if signature == "" {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
+		return
+	}
+
+	hash := sha256.Sum256([]byte(signature))
+	signature = string(hash[:])
+
+	acc, isValid := c.verifyValidationHashAndGrabAccount(signature)
+	if !isValid {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
+		return
+	}
+
+	acc.IsVerified = true // account is verified and enabled for use
+
+	errUpdateDB = c.Arepo.Update(acc)
+
+	if errUpdateDB != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
+		return
+	}
+
+	if redirectClient {
+		ctx.Redirect(http.StatusTemporaryRedirect, c.FrontEndDomain)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, "email_verified")
+}
+
 func (c *SessionAuthGinController) newAccount(ctx *gin.Context) {
 	var acc entity.Account
 
@@ -205,8 +383,20 @@ func (c *SessionAuthGinController) newAccount(ctx *gin.Context) {
 		return
 	}
 	acc = *(c.genHashAuth(&acc))
+	acc.IsVerified = false
+
+	tx := c.Tx.Begin()
+
 	err = c.Arepo.Create(&acc)
 	if err != nil {
+		tx.RollBack()
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(err))
+		return
+	}
+
+	err = c.onNewAccount(&acc)
+	if err != nil {
+		tx.RollBack()
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(err))
 		return
 	}
@@ -223,6 +413,47 @@ func (c *SessionAuthGinController) getAccountInfo(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(200, c.toAccount(ac, true))
+}
+
+func (c *SessionAuthGinController) updateAccountPassword(newpassword string, acc *entity.Account, ctx *gin.Context) (err error) {
+
+	err = c.IsPasswordSafe(newpassword)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
+		return
+	}
+	acc.Password = newpassword
+	acc = c.genHashAuth(acc)
+	err = c.Arepo.Update(acc)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
+		return
+	}
+	return nil
+}
+
+func (c *SessionAuthGinController) changePasswordWithAuthToken(ctx *gin.Context) {
+	type pwd struct {
+		Token       string `json:"token" binding:"required"`
+		NewPassword string `json:"new_pwd" binding:"required"`
+	}
+
+	var p pwd
+
+	err := ctx.ShouldBindJSON(&p)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
+		return
+	}
+
+	acc, isValid := c.verifyValidationHashAndGrabAccount(p.Token)
+	if !isValid {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
+		return
+	}
+
+	c.updateAccountPassword(p.NewPassword, acc, ctx)
+
 }
 
 func (c *SessionAuthGinController) changePassword(ctx *gin.Context) {
@@ -251,20 +482,7 @@ func (c *SessionAuthGinController) changePassword(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.NewError(errUnauthorized))
 		return
 	}
-
-	err = c.IsPasswordSafe(p.NewPassword)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
-		return
-	}
-	acc.Password = p.NewPassword
-	acc = c.genHashAuth(acc)
-	err = c.Arepo.Update(acc)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.NewError(errRepo))
-		return
-	}
-	ctx.JSON(http.StatusOK, c.toAccount(acc, false))
+	c.updateAccountPassword(p.NewPassword, acc, ctx)
 
 }
 
@@ -322,26 +540,51 @@ func (c *SessionAuthGinController) ApplyRoutes(e *gin.Engine) *gin.Engine {
 	grp := e.Group(c.URLPathPrefix)
 	{
 		grp.POST("login", c.login)
+		grp.POST("login/sso", c.loginSSO)
 		grp.POST("logout", c.validate, c.logout)
 		grp.POST("password-strength/check", c.pwdStrength)
+		grp.POST("/email/_send_verification", c.sendVerificationEmailRest)
+		grp.POST("/email/_verify", c.verifyValidationLink)
 
 		grp.POST("accounts", c.newAccount)
-		grp.PUT("accounts/_password", c.validate, c.changePassword)
+		grp.PUT("accounts/_password/reset", c.validate, c.changePassword)
+		grp.PUT("accounts/_password/forgotten", c.changePasswordWithAuthToken)
 		grp.DELETE("accounts", c.validate, c.deleteAccount)
 		grp.GET("accounts/:id", c.getAccountInfo)
 	}
 	return e
 }
 
-func NewGinSessionAuthGorm(db *gorm.DB, basePathRoute string, cookieName string, loginExpiryTime time.Duration, domain string) *SessionAuthGinController {
+// SessionConfig : Sesion Auth Config
+type SessionConfig struct {
+	// DB : gorm data base this is required
+	DB *gorm.DB
+	// BasePathRoute : the base uri
+	BasePathRoute string
+	// CookieName : name of the cooke this is required
+	CookieName string
+	// LoginExpiryTime : the login expiry time default is 15m
+	LoginExpiryTime time.Duration
+	// Domain : host domain
+	Domain string
+	// SSOConfig : sso configuration , if you want /login/sso route working
+	SSOConfig sso.Config
+	// FrontEndDomain : front end domain for default redirect
+	FrontEndDomain string
+	// PasswordResetURLFull : password reset forgotten page
+	PasswordResetURLFull string
+}
+
+func NewGinSessionAuthGorm(s *SessionConfig) *SessionAuthGinController {
+
 	return &SessionAuthGinController{
-		CookieName:             cookieName,
-		URLPathPrefix:          basePathRoute,
-		AccountSessionDuration: loginExpiryTime,
-		Domain:                 domain,
+		CookieName:             s.CookieName,
+		URLPathPrefix:          s.BasePathRoute,
+		AccountSessionDuration: s.LoginExpiryTime,
+		Domain:                 s.Domain,
 		Arepo: &repository.AccountGorm{
 			CrudGorm: repository.CrudGorm[entity.Account]{
-				DB:         db,
+				DB:         s.DB,
 				PrimaryKey: "id",
 				Table:      (&entity.Account{}).TableName(),
 				Parser:     nil,
@@ -349,11 +592,14 @@ func NewGinSessionAuthGorm(db *gorm.DB, basePathRoute string, cookieName string,
 			},
 		},
 		SRepo: &repository.SessionGorm{
-			DB:         db,
+			DB:         s.DB,
 			PrimaryKey: "id",
 			Table:      (&entity.Session{}).TableName(),
 			Parser:     nil,
 			Sorter:     nil,
 		},
+		SSOHandler:       sso.New(s.SSOConfig),
+		FrontEndDomain:   s.FrontEndDomain,
+		PasswordResetURL: s.PasswordResetURLFull,
 	}
 }

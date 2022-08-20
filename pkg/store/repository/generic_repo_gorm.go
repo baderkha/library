@@ -24,6 +24,11 @@ type CrudGorm[t any] struct {
 	Sorter     rql.ISQLSortParser
 }
 
+func (c *CrudGorm[t]) DoesIDExist(id string) bool {
+	obj, err := c.GetById(id)
+	return err == nil && obj != nil
+}
+
 // GetById : get 1 record by id if not found should return err
 func (c *CrudGorm[t]) GetById(id string) (*t, error) {
 	var res t

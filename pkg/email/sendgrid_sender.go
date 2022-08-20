@@ -63,7 +63,7 @@ func (s *SendGridSender) SendEmail(c *Content) error {
 		return err
 	}
 
-	spew.Dump(s.sendGridEmailMappingCache)
+	spew.Dump(res)
 
 	return nil
 }

@@ -23,6 +23,9 @@ type ICrud[t any] interface {
 // IReadOnly : repo that only does read operations
 type IReadOnly[t any] interface {
 	IsForAccountID(id string, accountID string) bool
+
+	DoesIDExist(id string) bool
+
 	// GetById : get 1 record by id if not found should return err
 	GetById(id string) (*t, error)
 	// GetAll : get all the records (db dump)

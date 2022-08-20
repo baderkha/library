@@ -1,26 +1,19 @@
 package main
 
 import (
-	"log"
-
-	"github.com/baderkha/library/pkg/email"
+	"crypto/hmac"
+	"crypto/sha256"
+	"fmt"
 )
 
 func main() {
+	s := "Hello"
 
-	mailer := email.NewMockSender()
-	err := mailer.SendEmail(&email.Content{
-		FromUserFriendlyName: "your friendly neighborhood spiderman",
-		From:                 "ahmad@baderkhan.org",
-		To:                   "ahmad@baderkhna.org",
-		ToFriendlyName:       "ahmad baderkhan",
-		CC:                   []string{},
-		Subject:              "wow me please",
-		Body:                 `something cool 123`,
-	})
+	key := "FDJ1mnhuzjFjTdwhq7DtZG2Cq9kuuEZCG"
+	h := hmac.New(sha256.New, []byte(key))
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	h.Write([]byte(s))
+	fmt.Printf("%x\n", h.Sum(nil))
 
+	fmt.Printf("%x\n", sha256.Sum256([]byte(s)))
 }

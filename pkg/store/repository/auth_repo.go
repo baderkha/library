@@ -7,10 +7,15 @@ import (
 type IAccount interface {
 	ICrud[entity.Account]
 	DoesAccountExist(accountID string, oremail string) bool
+	DoesAccountExistByEmail(email string) (bool, *entity.Account)
 }
 
 type ISession interface {
 	ICrud[entity.Session]
+}
+
+type IHashVerificationAccount interface {
+	ICrud[entity.HashVerificationAccount]
 }
 
 // AccountGorm : gorm account
@@ -25,8 +30,16 @@ func (a *AccountGorm) DoesAccountExist(accountID string, oremail string) bool {
 	return c > 0
 }
 
+func (a *AccountGorm) DoesAccountExistByEmail(email string) (bool, *entity.Account) {
+	var e entity.Account
+	a.DB.Where("email=?", email).First(&e)
+	return e.ID != "", &e
+}
+
 // SessionGorm : session gorm
 type SessionGorm = CrudGorm[entity.Session]
+type HashAccountVerification = CrudGorm[entity.HashVerificationAccount]
 
 var _ IAccount = &AccountGorm{}
 var _ ISession = &SessionGorm{}
+var _ IHashVerificationAccount = &HashAccountVerification{}
