@@ -296,7 +296,7 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 
 	spew.Dump(config)
 
-	return c.MailValidation.SendHTMLEmail(&c.BaseMailConfig)
+	return c.MailValidation.SendHTMLEmail(&config)
 }
 
 func (c *SessionAuthGinController) sendVerificationEmailRest(ctx *gin.Context) {
