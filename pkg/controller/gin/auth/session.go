@@ -683,7 +683,7 @@ func NewGinSessionAuthGorm(s *SessionConfig) *SessionAuthGinController {
 		},
 		MailValidation:            s.Mailer,
 		ResetPasswordTemplateHTML: s.ResetPasswordTemplateHTML,
-		VerifyAccountTemplateHTML: s.ResetPasswordTemplateHTML,
+		VerifyAccountTemplateHTML: s.VerifyAccountTemplateHTML,
 		BaseMailConfig: email.Content{
 			FromUserFriendlyName: s.EmailSenderUserFriendly,
 			From:                 s.EmailSender,
