@@ -304,7 +304,7 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 	switch Type {
 	case entity.HashVerificationAccountTypeResetPass:
 		t, err := t.Parse(string(c.ResetPasswordTemplateHTML))
-		if err != nil && len(c.ResetPasswordTemplateHTML) > 0 {
+		if err == nil && len(c.ResetPasswordTemplateHTML) > 0 {
 			var writer bytes.Buffer
 			t.Execute(&writer, &htmlOperationTemplateData{
 				fmt.Sprintf("%s?signature=%s", c.PasswordResetURL, pwdB64),
@@ -325,7 +325,7 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 		break
 	case entity.HashVerificationAccountTypeVerify:
 		t, err := t.Parse(string(c.VerifyAccountTemplateHTML))
-		if err != nil && len(c.VerifyAccountTemplateHTML) > 0 {
+		if err == nil && len(c.VerifyAccountTemplateHTML) > 0 {
 			var writer bytes.Buffer
 			t.Execute(&writer, &htmlOperationTemplateData{
 				fmt.Sprintf("%s?signature=%s", c.VerifyEmailURLFull, pwdB64),
