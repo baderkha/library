@@ -16,17 +16,17 @@ const (
 
 // SendGridSender : send grid email sender
 type SendGridSender struct {
-	sendGridEmailMappingCache map[string]*mail.Email // cache
-	mu                        sync.Mutex
-	client                    *sendgrid.Client // http api client
+	emailCache map[string]*mail.Email // cache
+	mu         sync.Mutex
+	client     *sendgrid.Client // http api client
 }
 
 // NewSendGridSender : email sender that implements i sender (via send_grid api)
 func NewSendGridSender(apiKey string) ISender {
 	return &SendGridSender{
-		sendGridEmailMappingCache: make(map[string]*mail.Email),
-		mu:                        sync.Mutex{},
-		client:                    sendgrid.NewSendClient(apiKey),
+		emailCache: make(map[string]*mail.Email),
+		mu:         sync.Mutex{},
+		client:     sendgrid.NewSendClient(apiKey),
 	}
 }
 
@@ -35,23 +35,23 @@ func (s *SendGridSender) SendEmail(c *Content) error {
 	fromEmailCacheKey := s.toEmailKey(c.FromUserFriendlyName, c.From)
 	toEmailCacheKey := s.toEmailKey(c.ToFriendlyName, c.To)
 
-	from := s.sendGridEmailMappingCache[fromEmailCacheKey]
+	from := s.emailCache[fromEmailCacheKey]
 
 	if from == nil {
 		// create a new one
 		from = mail.NewEmail(c.FromUserFriendlyName, c.From)
 		s.mu.Lock()
-		s.sendGridEmailMappingCache[fromEmailCacheKey] = from
+		s.emailCache[fromEmailCacheKey] = from
 		s.mu.Unlock()
 	}
 
-	to := s.sendGridEmailMappingCache[toEmailCacheKey]
+	to := s.emailCache[toEmailCacheKey]
 
 	if to == nil {
 		// create a new one
 		to = mail.NewEmail(c.ToFriendlyName, c.To)
 		s.mu.Lock()
-		s.sendGridEmailMappingCache[toEmailCacheKey] = to
+		s.emailCache[toEmailCacheKey] = to
 		s.mu.Unlock()
 	}
 	message := mail.NewSingleEmail(from, c.Subject, to, c.Body, c.Body)
