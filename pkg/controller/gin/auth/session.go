@@ -54,6 +54,10 @@ type emailVerificationObj struct {
 	Email string
 }
 
+type passwordResetLinkObject struct {
+	emailVerificationObj
+}
+
 type SessionAuthGinController struct {
 	CookieName                         string
 	Domain                             string
@@ -299,18 +303,20 @@ func (c *SessionAuthGinController) sendVerificationEmail(acc *entity.Account, Ty
 	return c.MailValidation.SendHTMLEmail(&config)
 }
 
-func (c *SessionAuthGinController) sendVerificationEmailRest(ctx *gin.Context) {
-	var e emailVerificationObj
-	err := ctx.BindJSON(&e)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
-		return
+func (c *SessionAuthGinController) sendVerificationLink(Type string) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var e emailVerificationObj
+		err := ctx.BindJSON(&e)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, response.NewError(err))
+			return
+		}
+		isExist, acc := c.Arepo.DoesAccountExistByEmail(e.Email)
+		if isExist {
+			_ = c.sendVerificationEmail(acc, Type)
+		}
+		ctx.JSON(http.StatusOK, "ok")
 	}
-	isExist, acc := c.Arepo.DoesAccountExistByEmail(e.Email)
-	if isExist {
-		_ = c.sendVerificationEmail(acc, entity.HashVerificationAccountTypeVerify)
-	}
-	ctx.JSON(http.StatusOK, "ok")
 }
 
 func (c *SessionAuthGinController) verifyValidationHashAndGrabAccount(hash string) (acc *entity.Account, isValid bool) {
@@ -547,10 +553,12 @@ func (c *SessionAuthGinController) ApplyRoutes(e *gin.Engine) *gin.Engine {
 		grp.POST("login/sso", c.loginSSO)
 		grp.POST("logout", c.validate, c.logout)
 		grp.POST("password-strength/check", c.pwdStrength)
-		grp.POST("/email/_send_verification", c.sendVerificationEmailRest)
+		grp.POST("/email/_send_verification", c.sendVerificationLink(entity.HashVerificationAccountTypeVerify))
+
 		grp.POST("/email/_verify", c.verifyValidationLink)
 
 		grp.POST("accounts", c.newAccount)
+		grp.POST("accounts/_password/_send_reset_link", c.sendVerificationLink(entity.HashVerificationAccountTypeResetPass))
 		grp.PUT("accounts/_password/reset", c.validate, c.changePassword)
 		grp.PUT("accounts/_password/forgotten", c.changePasswordWithAuthToken)
 		grp.DELETE("accounts", c.validate, c.deleteAccount)
