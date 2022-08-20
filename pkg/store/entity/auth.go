@@ -6,9 +6,9 @@ type Account struct {
 	Base
 	Email      string `json:"email" db:"email" gorm:"type:varchar(255);index;unique"`
 	Password   string `json:"password" db:"password" gorm:"type:varchar(255)"`
-	IsVerified bool   `json:"is_verified" db:"is_verified"`
-	IsSSO      bool   `json:"is_sso"` // is an sso account
-	SSOType    string `json:"sso_type"`
+	IsVerified bool   `json:"-" db:"is_verified"`
+	IsSSO      bool   `json:"-" db:"is_sso"` // is an sso account
+	SSOType    string `json:"-" db:"sso_type"`
 }
 
 func (a *Account) TableName() string {
