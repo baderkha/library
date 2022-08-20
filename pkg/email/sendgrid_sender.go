@@ -55,7 +55,7 @@ func (s *SendGridSender) SendEmail(c *Content) error {
 		s.sendGridEmailMappingCache[toEmailCacheKey] = to
 		s.mu.Unlock()
 	}
-
+	spew.Dump(from, c.Subject, to, c.Body, c.Body)
 	message := mail.NewSingleEmail(from, c.Subject, to, c.Body, c.Body)
 	res, err := s.client.Send(message)
 	_ = res
