@@ -48,14 +48,16 @@ func (g *Google) VerifyUser(req http.Header) (res *entity.Account, err error) {
 		return nil, ErrorUnauthorized
 	}
 	return &entity.Account{
-		Base: entity.Base{
-			ID: claim.Email,
+		AccountPublic: entity.AccountPublic{
+			Base: entity.Base{
+				ID: claim.Email,
+			},
+			Email:      claim.Email,
+			IsSSO:      true,
+			SSOType:    HandlerTypeGoogle,
+			IsVerified: claim.EmailVerified,
 		},
-		Email:      claim.Email,
-		IsSSO:      true,
-		SSOType:    HandlerTypeGoogle,
-		Password:   "",
-		IsVerified: claim.EmailVerified,
+		Password: "",
 	}, nil
 }
 

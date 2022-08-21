@@ -1,13 +1,17 @@
 package main
 
 import (
+	"github.com/baderkha/library/pkg/store/client/typesense"
+	"github.com/baderkha/library/pkg/store/entity"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/go-resty/resty/v2"
 )
 
 func main() {
-	res, err := resty.New().R().Get("https://www.google.com/ahmadabaffvaf")
-	spew.Dump(err)
-	spew.Dump(res)
+
+	// Fields will list every structure exportable fields.
+	// Here, it's content would be equal to:
+	// []string{"FirstField", "SecondField", "ThirdField"}
+	migrator := typesense.Migration[entity.Account]{}
+	spew.Dump(migrator.ModelToCollection())
 
 }

@@ -3,9 +3,13 @@ package entity
 import "time"
 
 type Account struct {
+	AccountPublic
+	Password string ` json:"password" db:"password" gorm:"type:varchar(255)"`
+}
+
+type AccountPublic struct {
 	Base
-	Email      string `json:"email" db:"email" gorm:"type:varchar(255);index;unique"`
-	Password   string `json:"password" db:"password" gorm:"type:varchar(255)"`
+	Email      string `json:"email" tsense_default_sort:"1" tsense_sort:"1" db:"email" gorm:"type:varchar(255);index;unique"`
 	IsVerified bool   `json:"-" db:"is_verified"`
 	IsSSO      bool   `json:"-" db:"is_sso"` // is an sso account
 	SSOType    string `json:"-" db:"sso_type"`

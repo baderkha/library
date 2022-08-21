@@ -28,6 +28,11 @@ func (b *buffer) underscoreWithIndent() {
 	}
 }
 
+// Underscore : take a camel cased string input and turn it to snakecased
+//
+// Example :
+//			value := Underscore("someThingLong")
+//			fmt.Println(value) // some_thing_long
 func Underscore(s string) string {
 	b := buffer{
 		r: make([]byte, 0, len(s)),
