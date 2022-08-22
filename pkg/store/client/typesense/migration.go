@@ -86,7 +86,7 @@ type IMigration[T any] interface {
 //
 // Houses Both Collection / Alias Operations + Adds a handy AutoMigration function / ManualMigration
 type Migration[T any] struct {
-	baseClient[T]
+	*baseClient[T]
 }
 
 // Auto : AutoMigrate Depending on the model it will construct a collection via typesense , alias it and maintain the schema

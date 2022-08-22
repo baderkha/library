@@ -38,6 +38,7 @@ package typesense
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/afero"
@@ -186,9 +187,18 @@ func newHTTPClient(apiKey, host string, logging bool) *resty.Client {
 
 // NewModelMigration : Migration if you want to use Model Dependent migration ie tie your migration client to a
 //A Specific struct declaration
-func NewModelMigration[T any](apiKey string, host string, logging bool) *Migration[T] {
+func NewModelMigration[T any](apiKey string, host string, logging bool) IMigration[T] {
+	base := newBaseClient[T](apiKey, host, logging)
 	return &Migration[T]{
-		httpClient: *newHTTPClient(apiKey, host, logging),
+		baseClient: base,
+	}
+}
+
+// NewDocumentClient : create a new document client which allows you to do basic crud operations on documents
+func NewDocumentClient[T any](apiKey string, host string, logging bool) IDocumentClient[T] {
+	base := newBaseClient[T](apiKey, host, logging)
+	return &DocumentClient[T]{
+		baseClient: base,
 	}
 }
 
@@ -200,8 +210,17 @@ func NewModelMigration[T any](apiKey string, host string, logging bool) *Migrati
 //				migrator.Auto() // should panic or error or give you a bad status code
 //
 //				// instead you will have to make the calls yourself
-func NewManualMigration(apiKey string, host string, logging bool) *Migration[any] {
+func NewManualMigration(apiKey string, host string, logging bool) IMigration[any] {
+	base := newBaseClient[any](apiKey, host, logging)
 	return &Migration[any]{
-		httpClient: *newHTTPClient(apiKey, host, logging),
+		baseClient: base,
+	}
+}
+
+func newBaseClient[T any](apiKey string, host string, logging bool) *baseClient[T] {
+	return &baseClient[T]{
+		r:          newHTTPClient(apiKey, host, logging),
+		aliasCache: make(map[string]string),
+		mu:         sync.Mutex{},
 	}
 }

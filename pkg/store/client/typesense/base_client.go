@@ -23,7 +23,7 @@ type baseClient[T any] struct {
 }
 
 // getCollectionName : gets an underscore name from the struct field
-func (m baseClient[T]) getCollectionName() string {
+func (m *baseClient[T]) getCollectionName() string {
 	var mdl T
 	name, _ := reflection.GetTypeName(mdl)
 
@@ -31,19 +31,19 @@ func (m baseClient[T]) getCollectionName() string {
 
 }
 
-func (m baseClient[T]) Req() *resty.Request {
+func (m *baseClient[T]) Req() *resty.Request {
 	return m.r.R()
 }
 
 // VersionCollectionName : adds a version to the collectioName
-func (m baseClient[T]) VersionCollectionName(colName string) string {
+func (m *baseClient[T]) VersionCollectionName(colName string) string {
 	golangDateTime := time.Now().Format("2006-01-02")
 	hash := shortuuid.New()
 	return fmt.Sprintf("%s_%s_%s", colName, golangDateTime, hash)
 }
 
 // GetCollectionFromAlias : get underlying collection for an alias name if the binding exists
-func (m baseClient[T]) GetCollectionFromAlias(aliasName string) (doesExist bool, col Collection) {
+func (m *baseClient[T]) GetCollectionFromAlias(aliasName string) (doesExist bool, col Collection) {
 	doesExist, aliasDetails := m.GetAlias(aliasName)
 	if !doesExist {
 		return false, col
@@ -51,7 +51,7 @@ func (m baseClient[T]) GetCollectionFromAlias(aliasName string) (doesExist bool,
 	return m.GetCollection(aliasDetails.CollectionName)
 }
 
-func (m baseClient[T]) JSONLToByteSlice(jsonL io.Reader) ([]byte, error) {
+func (m *baseClient[T]) JSONLToByteSlice(jsonL io.Reader) ([]byte, error) {
 	var b bytes.Buffer
 	_, err := b.ReadFrom(jsonL)
 	if err != nil {
@@ -60,14 +60,14 @@ func (m baseClient[T]) JSONLToByteSlice(jsonL io.Reader) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (m baseClient[T]) ModelToJSONLines(mod []*T) []byte {
+func (m *baseClient[T]) ModelToJSONLines(mod []*T) []byte {
 	var buf bytes.Buffer
 	_ = jsonlines.Encode(&buf, &mod)
 	return buf.Bytes()
 }
 
 // GetAlias : gets an alias label and returns back collection name
-func (m baseClient[T]) GetAlias(aliasName string) (doesExist bool, alias Alias) {
+func (m *baseClient[T]) GetAlias(aliasName string) (doesExist bool, alias Alias) {
 	res, err := m.Req().
 		SetResult(&alias).
 		Get(fmt.Sprintf("/alias/%s", aliasName))
@@ -75,7 +75,7 @@ func (m baseClient[T]) GetAlias(aliasName string) (doesExist bool, alias Alias) 
 }
 
 // GetAlias : gets an alias label and returns back collection name
-func (m baseClient[T]) GetAliasCached(aliasName string) (doesExist bool, alias Alias) {
+func (m *baseClient[T]) GetAliasCached(aliasName string) (doesExist bool, alias Alias) {
 	colName := m.aliasCache[aliasName]
 	if colName != "" {
 		alias.CollectionName = colName
@@ -92,14 +92,14 @@ func (m baseClient[T]) GetAliasCached(aliasName string) (doesExist bool, alias A
 }
 
 // GetCollection : gets a collection and checks if it exists
-func (m baseClient[T]) GetCollection(collection string) (doesExist bool, col Collection) {
+func (m *baseClient[T]) GetCollection(collection string) (doesExist bool, col Collection) {
 	res, err := m.Req().
 		SetResult(&col).
 		Get(fmt.Sprintf("/collections/%s", collection))
 	return err != nil || res.StatusCode() != http.StatusOK, col
 }
 
-func (m baseClient[T]) golangToTypesenseType(field reflector.ObjField) (typ string, err error) {
+func (m *baseClient[T]) golangToTypesenseType(field reflector.ObjField) (typ string, err error) {
 	fieldName, _ := field.Tag("db")
 	goType := field.Type().Name()
 	if goType == "" {

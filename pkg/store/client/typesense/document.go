@@ -78,7 +78,7 @@ type IDocumentClient[T any] interface {
 
 // DocumentClient : Document client (meant for simple gets , post , patch , deletes
 type DocumentClient[T any] struct {
-	baseClient[T]
+	*baseClient[T]
 	colName      string
 	batchSize    int64
 	dirtyStrat   string
