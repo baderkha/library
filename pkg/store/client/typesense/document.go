@@ -86,7 +86,7 @@ type DocumentClient[T any] struct {
 }
 
 func (d *DocumentClient[T]) getColName() string {
-	colName := conditional.Ternary(d.colName != "", d.colName, "")
+	colName := conditional.Ternary(d.colName != "", d.colName, d.getCollectionName())
 	if !d.isNotAliased {
 		_, al := d.GetAliasCached(colName)
 		colName = al.CollectionName

@@ -3,15 +3,16 @@ package entity
 import (
 	"time"
 
+	"github.com/baderkha/library/pkg/store/client/typesense/types"
 	"github.com/gofrs/uuid"
 )
 
 // Base : attach this as a base model using uuid
 type Base struct {
-	ID        string    `json:"id" db:"id" gorm:"type:VARCHAR(100);primary"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	IsDeleted bool      `json:"is_deleted" db:"is_deleted" gorm:"type:TINYINT(1);index"`
+	ID        string          `json:"id" db:"id" gorm:"type:VARCHAR(100);primary"`
+	CreatedAt types.Timestamp `json:"created_at" db:"created_at"`
+	UpdatedAt types.Timestamp `json:"updated_at" db:"updated_at"`
+	IsDeleted bool            `json:"is_deleted" db:"is_deleted" gorm:"type:TINYINT(1);index"`
 }
 
 func (b *Base) New() {
@@ -21,6 +22,6 @@ func (b *Base) New() {
 	}
 	b.ID = id.String()
 	b.IsDeleted = false
-	b.CreatedAt = time.Now()
-	b.UpdatedAt = time.Now()
+	b.CreatedAt = types.Timestamp(time.Now())
+	b.UpdatedAt = types.Timestamp(time.Now())
 }

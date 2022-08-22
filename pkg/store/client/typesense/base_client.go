@@ -71,7 +71,7 @@ func (m *baseClient[T]) GetAlias(aliasName string) (doesExist bool, alias Alias)
 	res, err := m.Req().
 		SetResult(&alias).
 		Get(fmt.Sprintf("/alias/%s", aliasName))
-	return err != nil || res.StatusCode() != http.StatusOK, alias
+	return err == nil && res.StatusCode() == http.StatusOK, alias
 }
 
 // GetAlias : gets an alias label and returns back collection name
@@ -96,7 +96,7 @@ func (m *baseClient[T]) GetCollection(collection string) (doesExist bool, col Co
 	res, err := m.Req().
 		SetResult(&col).
 		Get(fmt.Sprintf("/collections/%s", collection))
-	return err != nil || res.StatusCode() != http.StatusOK, col
+	return err == nil && res.StatusCode() == http.StatusOK, col
 }
 
 func (m *baseClient[T]) golangToTypesenseType(field reflector.ObjField) (typ string, err error) {

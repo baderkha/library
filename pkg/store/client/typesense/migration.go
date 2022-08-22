@@ -10,6 +10,7 @@ import (
 	"github.com/baderkha/library/pkg/conditional"
 	http2 "github.com/baderkha/library/pkg/http"
 	"github.com/baderkha/library/pkg/store/entity"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/tkrajina/go-reflector/reflector"
 )
 
@@ -111,7 +112,7 @@ func (m Migration[T]) Auto() error {
 	return m.Manual(colSchema, false)
 }
 
-func sortFieldsFunc(col *Collection, wg sync.WaitGroup) {
+func sortFieldsFunc(col *Collection, wg *sync.WaitGroup) {
 	defer wg.Done()
 	sort.Slice(col.Fields, func(i, j int) bool {
 		return strings.ToLower(col.Fields[i].Name) < strings.ToLower(col.Fields[j].Name)
@@ -141,20 +142,25 @@ func sortFieldsFunc(col *Collection, wg sync.WaitGroup) {
 //
 func (m Migration[T]) Manual(col *Collection, alias bool) error {
 	var wg sync.WaitGroup
+	var typeSenseCollection Collection
+	var colExists bool
 	aliasName := col.Name
 	colCompareCopy := *col
-
-	colExists, typeSenseCollection := m.GetCollectionFromAlias(aliasName)
-
+	if alias {
+		colExists, typeSenseCollection = m.GetCollectionFromAlias(aliasName)
+	} else {
+		colExists, typeSenseCollection = m.GetCollection(col.Name)
+	}
+	spew.Dump(colExists)
 	// if exist , we're doing a put
 	if colExists {
 		colCompareCopy.Name = typeSenseCollection.Name
 		// they're both doing the same thing
 		// why not have it concurrent
 		wg.Add(1)
-		go sortFieldsFunc(&typeSenseCollection, wg)
+		go sortFieldsFunc(&typeSenseCollection, &wg)
 		wg.Add(1)
-		go sortFieldsFunc(&colCompareCopy, wg)
+		go sortFieldsFunc(&colCompareCopy, &wg)
 		wg.Wait()
 
 		// compare changes via diff
@@ -290,6 +296,8 @@ func (m Migration[T]) ModelToCollection() (*Collection, error) {
 				return nil, fmt.Errorf("Typesense : You cannot have more than 1 default sort field")
 			}
 			defaultSort = colVal
+			requiredVal = "1"
+			indexVal = "1"
 		}
 
 		col.Fields = append(col.Fields, CollectionField{
