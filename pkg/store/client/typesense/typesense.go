@@ -26,7 +26,13 @@
 // If you disagree feel free to add your implementation and expand the interface
 //
 //
-// See : https://github.com/baderkha
+// See :
+//
+// https://github.com/baderkha
+//
+// https://github.com/baderkha/library/blob/main/pkg/store/client/typesense
+//
+// Author : Ahmad Baderkhan
 //
 package typesense
 
@@ -34,6 +40,7 @@ import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -98,6 +105,28 @@ const (
 	//
 	TagDefaultSort = "tsense_default_sort"
 )
+
+var (
+	fs = afero.NewOsFs()
+)
+
+// OverrideFS : change the file ssytem that will be used in the client
+//
+// call this before constructing the Client . if you want a different file system
+//
+// see :
+//
+// https://github.com/spf13/afero#available-backends
+//
+// // forexample you can have a s3 bucket to store your jsonl files
+//
+// https://github.com/fclairamb/afero-s3  // (cool right :))
+//
+//
+//
+func OverrideFS(newFs afero.Fs) {
+	fs = newFs
+}
 
 func typesenseToError(responseBody []byte, statusCode int) error {
 	return fmt.Errorf("%s : %d  : %s", typesenseErrPrefix, statusCode, string(responseBody))
