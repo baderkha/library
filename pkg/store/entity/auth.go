@@ -10,9 +10,9 @@ type Account struct {
 type AccountPublic struct {
 	Base
 	Email      string `json:"email" tsense_default_sort:"1" tsense_sort:"1" db:"email" gorm:"type:varchar(255);index;unique"`
-	IsVerified bool   `json:"-" db:"is_verified"`
-	IsSSO      bool   `json:"-" db:"is_sso"` // is an sso account
-	SSOType    string `json:"-" db:"sso_type"`
+	IsVerified bool   `json:"is_verified" db:"is_verified"`
+	IsSSO      bool   `json:"is_sso" db:"is_sso"` // is an sso account
+	SSOType    string `json:"sso_type" db:"sso_type"`
 }
 
 func (a *Account) TableName() string {
