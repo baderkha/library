@@ -25,6 +25,9 @@ func (p *Timestamp) UnmarshalJSON(bytes []byte) error {
 }
 
 func (p *Timestamp) MarshalJSON() ([]byte, error) {
+	if p == nil {
+		return nil, nil
+	}
 	// 1. Decode the bytes into an int64
 	x := time.Time(*p)
 	return json.Marshal(x.Unix())
