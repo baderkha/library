@@ -3,14 +3,18 @@ package rql
 import (
 	"errors"
 	"strings"
+
+	"github.com/baderkha/library/pkg/err"
 )
 
 var (
 	ErrBadSortExpression               = errors.New("RQL : SortExpression Malformed must be `col::<ASC|DESC>` ")
 	ErrBadSortExpressionValue          = errors.New("RQL : SortExpression Malformed must be either DESC|ASC for the value")
 	ErrBadSortExpressionNotSortableCol = errors.New("RQL : SortExpression Malformed col not found ")
-	DESC                               = "DESC"
-	ASC                                = "ASC"
+	ErrSortColumnDoesntExist           = err.Compose("SQL : SortExpression Column `%s` Does Not Exist")
+
+	DESC = "DESC"
+	ASC  = "ASC"
 )
 
 // SortExpression : sort expression value

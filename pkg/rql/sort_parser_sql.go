@@ -25,12 +25,11 @@ type SortParserSQL struct {
 func (s SortParserSQL) Parse(expression *SortExpression, schema *Schema) (out *SQLSortOutput, err error) {
 	out = &SQLSortOutput{}
 	for k, v := range expression.sortMap {
-
+		if !schema.DoesColExist(k) {
+			return nil, ErrSortColumnDoesntExist(k)
+		}
 		if v != DESC && v != ASC {
 			return nil, ErrBadSortExpressionValue
-		}
-		if !schema.IsSortable(k) {
-			return nil, fmt.Errorf("%v : %s", ErrBadSortExpressionNotSortableCol, k)
 		}
 		out.Clauses = append(out.Clauses, fmt.Sprintf("%s %s", k, v))
 	}

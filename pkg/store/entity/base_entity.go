@@ -3,7 +3,7 @@ package entity
 import (
 	"time"
 
-	"github.com/baderkha/library/pkg/store/client/typesense/types"
+	"github.com/baderkha/typesense/types"
 	"github.com/gofrs/uuid"
 )
 
@@ -24,4 +24,12 @@ func (b *Base) New() {
 	b.IsDeleted = false
 	b.CreatedAt = types.Timestamp(time.Now())
 	b.UpdatedAt = types.Timestamp(time.Now())
+}
+
+func (b Base) GetID() string {
+	return b.ID
+}
+
+func (b Base) GetIDKey() string {
+	return b.ID
 }

@@ -4,6 +4,14 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+
+	"github.com/tkrajina/go-reflector/reflector"
+)
+
+const (
+	// RQLNoOpTag : tag label for column you do not wish to be operated on in any way
+	// This can be a credentials column ...etc
+	RQLNoOpTag = "rql_no_op"
 )
 
 var (
@@ -39,17 +47,23 @@ func FlattenAllFields(iface interface{}) []reflect.StructField {
 func GetSchemaFromTaggedEntity(model interface{}, filterColTag string) *Schema {
 	var schemaOut Schema
 	schemaOut.supportedColumns = make(map[string]*FilterableEntity)
-	fields := FlattenAllFields(model)
+	refl := reflector.New(model)
+	fields := refl.FieldsFlattened()
 	for _, t := range fields {
-		internalVal, existsInternal := t.Tag.Lookup(filterColTag)
-		if existsInternal {
-			_, isNotFilterable := t.Tag.Lookup("not_filterable")
-			_, isNotFuzzySearch := t.Tag.Lookup("not_searchable")
+		noOpVal, _ := t.Tag(RQLNoOpTag)
+		if noOpVal != "" {
+			continue // skip
+		}
+		internalVal, existsInternal := t.Tag(filterColTag)
+		var tags map[string]string
+		tags, err := t.Tags()
+		if err != nil {
+			tags = make(map[string]string, 0)
+		}
+		if existsInternal == nil && internalVal != "" {
 			schemaOut.supportedColumns[internalVal] = &FilterableEntity{
-				IsFilterable:       !isNotFilterable,
-				IsFuzzySearchable:  !isNotFuzzySearch,
-				Type:               resolveJavaScriptType(t),
 				ColumnNameInternal: internalVal,
+				Tags:               tags,
 			}
 		}
 	}
@@ -80,28 +94,30 @@ func resolveJavaScriptType(v reflect.StructField) string {
 }
 
 type FilterableEntity struct {
-	IsFilterable       bool   `json:"is_filterable"`
-	IsFuzzySearchable  bool   `json:"is_fuzzy_searchable"`
-	Type               string `json:"type"` // string , number , obj , ...etc
-	ColumnNameInternal string `json:"-"`    // internal col name for sql
+	ColumnNameInternal string `json:"-"` // internal col name for sql
+	Tags               map[string]string
 }
 
 type Schema struct {
 	supportedColumns map[string]*FilterableEntity
 }
 
-func (s *Schema) IsSortable(col string) bool {
-	return s.supportedColumns[col] != nil
-}
-
-func (s *Schema) IsFilterable(col string) bool {
-	return s.supportedColumns[col] != nil && s.supportedColumns[col].IsFilterable
-}
-
-func (s *Schema) IsSearchable(col string) bool {
-	return s.supportedColumns[col] != nil && s.supportedColumns[col].IsFuzzySearchable
-}
-
 func (s *Schema) GetColumnInternalName(col string) string {
 	return s.supportedColumns[col].ColumnNameInternal
+}
+
+func (s *Schema) DoesColExist(col string) bool {
+	return s.GetColumnInternalName(col) != ""
+}
+
+func (s *Schema) CheckTagExists(col string, tag string) bool {
+	return s.GetTagValue(col, tag) != ""
+}
+
+func (s *Schema) GetTagValue(col string, tag string) string {
+	fe := s.supportedColumns[col]
+	if fe != nil {
+		return ""
+	}
+	return fe.Tags[tag]
 }

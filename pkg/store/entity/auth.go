@@ -1,6 +1,10 @@
 package entity
 
-import "time"
+import (
+	"time"
+)
+
+var _ Model = &Account{}
 
 type Account struct {
 	AccountPublic
@@ -15,7 +19,11 @@ type AccountPublic struct {
 	SSOType    string `json:"sso_type" db:"sso_type"`
 }
 
-func (a *Account) TableName() string {
+func (a AccountPublic) GetAccountID() string {
+	return a.Base.ID
+}
+
+func (a Account) TableName() string {
 	return "accounts"
 }
 
@@ -24,7 +32,7 @@ type Session struct {
 	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
 }
 
-func (s *Session) TableName() string {
+func (s Session) TableName() string {
 	return "sessions"
 }
 
@@ -42,6 +50,20 @@ type HashVerificationAccount struct {
 	HasBeenUsed bool      `json:"has_been_used" db:"has_been_used"`
 }
 
-func (h *HashVerificationAccount) TableName() string {
+func (h HashVerificationAccount) TableName() string {
 	return "hash_verification_account"
+}
+
+func (h HashVerificationAccount) GetID() string {
+	return h.ID
+}
+
+// GetIDKey : return the id column name ie your "db" tag
+func (h HashVerificationAccount) GetIDKey() string {
+	return "id"
+}
+
+// GetAccountID : return back the account id for the record
+func (h HashVerificationAccount) GetAccountID() string {
+	return h.AccountID
 }

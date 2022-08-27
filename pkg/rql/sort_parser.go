@@ -1,6 +1,7 @@
 package rql
 
 type ISQLSortParser = ISortParser[SQLSortOutput]
+type ITypeSenseSortParser = ISortParser[string]
 
 // ISortParser : parses sort expression
 type ISortParser[t any] interface {

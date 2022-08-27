@@ -5,3 +5,7 @@ type BaseOwned struct {
 	Base
 	AccountID string `json:"account_id" db:"account_id" gorm:"type:VARCHAR(255);index"`
 }
+
+func (b BaseOwned) GetAccountID() string {
+	return b.AccountID
+}

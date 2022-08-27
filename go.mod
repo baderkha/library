@@ -20,6 +20,7 @@ require (
 
 require (
 	github.com/Deiz/interfacegen v1.2.2 // indirect
+	github.com/baderkha/typesense v0.0.0-20220825042705-da50f99a8f02 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
@@ -42,8 +43,8 @@ require (
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/wlredeye/jsonlines v0.0.0-20160904163743-36b5e1bd13d0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/net v0.0.0-20211029224645-99673261e6eb // indirect
-	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.11 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

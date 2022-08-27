@@ -9,6 +9,19 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+const (
+	filterLike  = "like"
+	filterGt    = "gt"
+	filterGe    = "ge"
+	filterLt    = "lt"
+	filterLe    = "le"
+	filterEq    = "eq"
+	filterNe    = "ne"
+	filterIn    = "in"
+	filterNin   = "nin"
+	filterFuzzy = "fuzzy"
+)
+
 // FilterExpression : recursive filter expression that can be used to do complex binary logic filtering
 type FilterExpression struct {
 	Column          string              `json:"column" mapstructure:"column"`

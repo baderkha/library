@@ -7,21 +7,23 @@ import (
 
 	"github.com/baderkha/library/pkg/conditional"
 	"github.com/baderkha/library/pkg/rql"
+	"github.com/baderkha/library/pkg/store/entity"
 	"gorm.io/gorm"
 )
-
-var _ ICrud[interface{}] = &CrudGorm[interface{}]{}
 
 const (
 	GormBatchSize = 3000
 )
 
-type CrudGorm[t any] struct {
-	DB         *gorm.DB
-	PrimaryKey string
-	Table      string
-	Parser     rql.ISQLFilterParser
-	Sorter     rql.ISQLSortParser
+type CrudGorm[t entity.Model] struct {
+	DB     *gorm.DB
+	Parser rql.ISQLFilterParser
+	Sorter rql.ISQLSortParser
+}
+
+func (c *CrudGorm[t]) Model() t {
+	var m t
+	return m
 }
 
 func (c *CrudGorm[t]) DoesIDExist(id string) bool {
@@ -32,20 +34,20 @@ func (c *CrudGorm[t]) DoesIDExist(id string) bool {
 // GetById : get 1 record by id if not found should return err
 func (c *CrudGorm[t]) GetById(id string) (*t, error) {
 	var res t
-	err := c.DB.Table(c.Table).Where(c.PrimaryKey+"=?", id).First(&res).Error
+	err := c.DB.Table(c.Model().TableName()).Where(c.Model().GetIDKey()+"=?", id).First(&res).Error
 	return &res, err
 }
 
 // GetAll : get all the records (db dump)
 func (c *CrudGorm[t]) GetAll() ([]*t, error) {
 	var res []*t
-	err := c.DB.Table(c.Table).Find(&res).Error
+	err := c.DB.Table(c.Model().TableName()).Find(&res).Error
 	return res, err
 }
 
 func (c *CrudGorm[t]) IsForAccountID(id string, accountID string) bool {
 	var count int64
-	c.DB.Table(c.Table).Where(c.PrimaryKey+"=?", id).Where("account_id=?", accountID).Count(&count)
+	c.DB.Table(c.Model().TableName()).Where(c.Model().GetIDKey()+"=?", id).Where("account_id=?", accountID).Count(&count)
 	return count > 0
 }
 
@@ -88,7 +90,7 @@ func (c *CrudGorm[t]) GetWithFilterExpression(f *rql.FilterExpression, s *rql.So
 	}
 	out.Query = conditional.Ternary(out.Query == "", " 1=1", out.Query)
 	outBase.Query = conditional.Ternary(outBase.Query == "", "1=1", outBase.Query)
-	sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s AND %s %s", c.Table, out.Query, outBase.Query, outSort.RawQuery)
+	sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s AND %s %s", c.Model().TableName(), out.Query, outBase.Query, outSort.RawQuery)
 	err = c.DB.Raw(sql, args...).Find(&data).Error
 	return data, err
 }
@@ -152,7 +154,7 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 	go func() {
 		defer wg.Done()
 
-		sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s AND %s %s %s", c.Table, out.Query, outBase.Query, outSort.RawQuery, limitClause)
+		sql := fmt.Sprintf("SELECT * FROM %s WHERE 1=1 AND %s AND %s %s %s", c.Model().TableName(), out.Query, outBase.Query, outSort.RawQuery, limitClause)
 		err = c.DB.Raw(sql, args...).Find(&records).Error
 
 		mu.Lock()
@@ -163,7 +165,7 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 	go func() {
 		defer wg.Done()
 
-		sql := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE 1=1 AND %s AND %s", c.Table, out.Query, outBase.Query)
+		sql := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE 1=1 AND %s AND %s", c.Model().TableName(), out.Query, outBase.Query)
 		_ = c.DB.Raw(sql, args...).Find(&count)
 
 		mu.Lock()
@@ -181,36 +183,36 @@ func (c *CrudGorm[t]) GetWithFilterExpressionPaginated(f *rql.FilterExpression, 
 
 // Create : create one
 func (c *CrudGorm[t]) Create(mdl *t) error {
-	return c.DB.Table(c.Table).Create(mdl).Error
+	return c.DB.Table(c.Model().TableName()).Create(mdl).Error
 }
 
 // BulkCreate : create many
 func (c *CrudGorm[t]) BulkCreate(mdl []*t) error {
-	return c.DB.Table(c.Table).CreateInBatches(mdl, GormBatchSize).Error
+	return c.DB.Table(c.Model().TableName()).CreateInBatches(mdl, GormBatchSize).Error
 }
 
 // Update : update model
 func (c *CrudGorm[t]) Update(mdl *t) error {
-	return c.DB.Table(c.Table).Updates(mdl).Error
+	return c.DB.Table(c.Model().TableName()).Updates(mdl).Error
 }
 
 // DeleteById : perma delete model by id
 func (c *CrudGorm[t]) DeleteById(id string) error {
 	var res t
-	err := c.DB.Table(c.Table).Where(c.PrimaryKey+"=?", id).Delete(&res).Error
+
+	err := c.DB.Table(c.Model().TableName()).Where(c.Model().GetIDKey()+"=?", id).Delete(&res).Error
 	return err
 }
 
 func (c *CrudGorm[t]) DeleteByIds(id []string) error {
 	var res t
-	err := c.DB.Table(c.Table).Where(c.PrimaryKey+" in (?)", id).Delete(&res).Error
+	err := c.DB.Table(c.Model().TableName()).Where(c.Model().GetIDKey()+" in (?)", id).Delete(&res).Error
 	return err
 }
 
 func (c *CrudGorm[t]) WithTransaction(tx ITransaction) ICrud[t] {
 	dbtx := tx.(*GormTransaction)
 	return &CrudGorm[t]{
-		DB:         dbtx.DB,
-		PrimaryKey: c.PrimaryKey,
+		DB: dbtx.DB,
 	}
 }

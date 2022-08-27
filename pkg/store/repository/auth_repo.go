@@ -21,7 +21,6 @@ type IHashVerificationAccount interface {
 // AccountGorm : gorm account
 type AccountGorm struct {
 	CrudGorm[entity.Account]
-	BcryptCost int
 }
 
 func (a *AccountGorm) DoesAccountExist(accountID string, oremail string) bool {
