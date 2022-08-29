@@ -1,6 +1,9 @@
 # Library
 Author Ahmad Baderkhan
 
+## Documentation
+
+https://pkg.go.dev/github.com/baderkha/library
 
 ## List Of Packages 
 - conditional (allows you to do ternay operations inline)
